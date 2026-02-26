@@ -1,0 +1,19 @@
+{
+  "name": "competitor-stalker",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter './apps/*' dev",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "db:push": "bun run --cwd apps/api db:push",
+    "db:studio": "bun run --cwd apps/api db:studio",
+    "db:generate": "bun run --cwd apps/api db:generate"
+  },
+  "devDependencies": {
+    "prisma": "^6.3.0"
+  }
+}

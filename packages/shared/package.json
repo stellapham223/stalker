@@ -1,0 +1,9 @@
+{
+  "name": "@competitor-stalker/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./constants.js": "./constants.js"
+  }
+}

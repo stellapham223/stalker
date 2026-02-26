@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Competitor {
+  id            String         @id @default(uuid())
+  name          String
+  url           String
+  type          String         @default("website") // "website" | "shopify_app"
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  trackedFields TrackedField[]
+  snapshots     Snapshot[]
+}
+
+model TrackedField {
+  id           String     @id @default(uuid())
+  competitorId String
+  competitor   Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  name         String     // e.g. "pricing", "description", "rating"
+  selector     String     // CSS selector or JSON path
+  createdAt    DateTime   @default(now())
+
+  @@unique([competitorId, name])
+}
+
+model Snapshot {
+  id           String     @id @default(uuid())
+  competitorId String
+  competitor   Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  fieldName    String     // which tracked field this snapshot belongs to
+  content      String     // the scraped content
+  diff         String?    // diff from previous snapshot, null if first
+  diffSummary  String?    // human-readable summary of what changed
+  createdAt    DateTime   @default(now())
+
+  @@index([competitorId, fieldName, createdAt])
+}

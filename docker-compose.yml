@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stalker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stalker_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-competitor_stalker}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

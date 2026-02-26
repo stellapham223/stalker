@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+dist/
+.next/
+apps/api/generated/
+*.log
+.DS_Store
