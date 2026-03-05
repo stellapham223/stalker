@@ -7,7 +7,26 @@
       "Bash(node --version:*)",
       "Bash(npm --version:*)",
       "Bash(npm install:*)",
-      "Bash(bun install:*)"
+      "Bash(bun install:*)",
+      "Bash(curl:*)",
+      "Bash(npx prisma db execute:*)",
+      "Bash(node -e:*)",
+      "Bash(bun -e:*)",
+      "WebFetch(domain:appstle.com)",
+      "WebFetch(domain:getrecharge.com)",
+      "WebFetch(domain:www.sealsubscriptions.com)",
+      "WebFetch(domain:www.subi.co)",
+      "WebFetch(domain:www.loopwork.co)",
+      "Bash(bun:*)",
+      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bun cleanup-snapshots.js:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(bunx prisma:*)",
+      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma db execute:*)",
+      "Bash(PGPASSWORD=stalker_pass psql:*)",
+      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma generate:*)",
+      "Bash(grep:*)",
+      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma migrate dev:*)"
     ]
   }
 }

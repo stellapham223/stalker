@@ -6,3 +6,4 @@ dist/
 apps/api/generated/
 *.log
 .DS_Store
+nul

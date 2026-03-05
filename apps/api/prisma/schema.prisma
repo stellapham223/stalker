@@ -43,3 +43,165 @@ model Snapshot {
 
   @@index([competitorId, fieldName, createdAt])
 }
+
+// ============ Feature 1: App Listing (direct Shopify scrape) ============
+
+model AppListingCompetitor {
+  id        String               @id @default(uuid())
+  name      String
+  appUrl    String               @unique
+  active    Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  snapshots AppListingSnapshot[]
+}
+
+model AppListingSnapshot {
+  id           String               @id @default(uuid())
+  competitorId String
+  competitor   AppListingCompetitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  data         Json
+  diff         Json?
+  createdAt    DateTime             @default(now())
+
+  @@index([competitorId, createdAt])
+}
+
+// ============ Feature 2: Keyword Ranking ============
+
+model KeywordTracking {
+  id        String                   @id @default(uuid())
+  keyword   String                   @unique
+  searchUrl String
+  active    Boolean                  @default(true)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  snapshots KeywordRankingSnapshot[]
+}
+
+model KeywordRankingSnapshot {
+  id              String          @id @default(uuid())
+  keywordId       String
+  keyword         KeywordTracking @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  rankings        Json
+  newEntries      Json?
+  droppedEntries  Json?
+  positionChanges Json?
+  createdAt       DateTime        @default(now())
+
+  @@index([keywordId, createdAt])
+}
+
+// ============ Feature 3: Autocomplete ============
+
+model AutocompleteTracking {
+  id        String                 @id @default(uuid())
+  query     String                 @unique
+  targetUrl String
+  active    Boolean                @default(true)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  snapshots AutocompleteSnapshot[]
+}
+
+model AutocompleteSnapshot {
+  id             String               @id @default(uuid())
+  trackingId     String
+  tracking       AutocompleteTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+  suggestions    Json
+  appSuggestions Json?
+  rawResponse    Json?
+  diff           Json?
+  createdAt      DateTime             @default(now())
+
+  @@index([trackingId, createdAt])
+}
+
+// ============ Feature 4: Website Menu ============
+
+model WebsiteMenuTracking {
+  id              String               @id @default(uuid())
+  name            String
+  url             String               @unique
+  interactionType String               // "hover" | "click"
+  active          Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  snapshots       WebsiteMenuSnapshot[]
+}
+
+model WebsiteMenuSnapshot {
+  id         String              @id @default(uuid())
+  trackingId String
+  tracking   WebsiteMenuTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+  menuData   Json
+  diff       Json?
+  createdAt  DateTime            @default(now())
+
+  @@index([trackingId, createdAt])
+}
+
+// ============ Feature 6: Guide Docs ============
+
+model GuideDocsTracking {
+  id        String             @id @default(uuid())
+  name      String
+  url       String             @unique
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  snapshots GuideDocsSnapshot[]
+}
+
+model GuideDocsSnapshot {
+  id         String            @id @default(uuid())
+  trackingId String
+  tracking   GuideDocsTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+  navData    Json
+  diff       Json?
+  createdAt  DateTime          @default(now())
+
+  @@index([trackingId, createdAt])
+}
+
+// ============ Feature 5: Homepage Content ============
+
+model HomepageTracking {
+  id        String             @id @default(uuid())
+  name      String
+  url       String             @unique
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  snapshots HomepageSnapshot[]
+}
+
+model HomepageSnapshot {
+  id           String           @id @default(uuid())
+  trackingId   String
+  tracking     HomepageTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+  sections     Json
+  stats        Json?
+  testimonials Json?
+  fullText     String
+  diff         Json?
+  createdAt    DateTime         @default(now())
+
+  @@index([trackingId, createdAt])
+}
+
+// ============ Auth: Allowed Users ============
+
+model AllowedUser {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  isAdmin         Boolean  @default(false)
+  appListing      Boolean  @default(true)
+  keywordRankings Boolean  @default(true)
+  autocomplete    Boolean  @default(true)
+  websiteMenus    Boolean  @default(true)
+  homepageMonitor Boolean  @default(true)
+  guideDocs       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
