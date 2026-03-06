@@ -36,9 +36,12 @@ export function Sidebar({ session }) {
   const permissions = freshInfo?.permissions ?? {};
   const isAdmin = freshInfo?.isAdmin ?? false;
 
-  const visibleItems = navItems.filter((item) =>
-    item.permKey === null ? true : permissions[item.permKey] !== false
-  );
+  const hasAnyPermission = Object.keys(permissions).length > 0;
+  const visibleItems = navItems.filter((item) => {
+    if (item.permKey === null) return true;
+    if (!hasAnyPermission) return true; // new user: show all until permissions load
+    return permissions[item.permKey] !== false;
+  });
 
   return (
     <aside className="w-64 border-r bg-card p-4 flex flex-col h-screen sticky top-0">
