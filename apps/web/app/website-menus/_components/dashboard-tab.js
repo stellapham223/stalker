@@ -80,24 +80,24 @@ function MenuDiffSummary({ diff }) {
       <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>
       <div className="space-y-0.5 text-xs">
         {added.map((a, i) => (
-          <div key={`a-${i}`}><span className="text-green-600">+ {a.label}</span></div>
+          <div key={`a-${i}`}><span className="text-diff-add-foreground">+ {a.label}</span></div>
         ))}
         {removed.map((r, i) => (
-          <div key={`r-${i}`}><span className="text-red-500">- {r.label}</span></div>
+          <div key={`r-${i}`}><span className="text-diff-remove-foreground">- {r.label}</span></div>
         ))}
         {renamed.map((r, i) => (
           <div key={`rn-${i}`}>
-            <span className="text-yellow-600">~ {r.oldLabel} → {r.newLabel}</span>
+            <span className="text-warning">~ {r.oldLabel} → {r.newLabel}</span>
           </div>
         ))}
         {childrenChanged.map((c, i) => (
           <div key={`c-${i}`}>
-            <span className="text-yellow-600">~ {c.parentLabel}:</span>
+            <span className="text-warning">~ {c.parentLabel}:</span>
             {c.addedChildren?.map((a, j) => (
-              <span key={`ca-${j}`} className="text-green-600 ml-1">+{a}</span>
+              <span key={`ca-${j}`} className="text-diff-add-foreground ml-1">+{a}</span>
             ))}
             {c.removedChildren?.map((r, j) => (
-              <span key={`cr-${j}`} className="text-red-500 ml-1">-{r}</span>
+              <span key={`cr-${j}`} className="text-diff-remove-foreground ml-1">-{r}</span>
             ))}
           </div>
         ))}

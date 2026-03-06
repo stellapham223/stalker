@@ -158,13 +158,13 @@ function FieldRow({ label, current, prev, hasPrevious, fieldKey }) {
       return (
         <div className="space-y-0.5">
           {added.map((x, i) => (
-            <div key={`a-${i}`} className="text-green-600 text-xs">+ {x}</div>
+            <div key={`a-${i}`} className="text-diff-add-foreground text-xs">+ {x}</div>
           ))}
           {removed.map((x, i) => (
-            <div key={`r-${i}`} className="text-red-600 text-xs">- {x}</div>
+            <div key={`r-${i}`} className="text-diff-remove-foreground text-xs">- {x}</div>
           ))}
           {added.length === 0 && removed.length === 0 && (
-            <span className="text-yellow-600 text-xs">Order changed</span>
+            <span className="text-warning text-xs">Order changed</span>
           )}
         </div>
       );
@@ -172,7 +172,7 @@ function FieldRow({ label, current, prev, hasPrevious, fieldKey }) {
 
     return (
       <div className="text-xs">
-        <span className="text-red-600">Was: {typeof prev === "string" ? prev : JSON.stringify(prev)}</span>
+        <span className="text-diff-remove-foreground">Was: {typeof prev === "string" ? prev : JSON.stringify(prev)}</span>
       </div>
     );
   };
@@ -193,11 +193,11 @@ function ScreenshotsDiff({ current, prev }) {
   }
   return (
     <div className="space-y-0.5 text-xs">
-      {removed.map((s, i) => <div key={`rm-${i}`}><span className="text-red-500">- {s.alt || s.url}</span></div>)}
-      {added.map((s, i) => <div key={`add-${i}`}><span className="text-green-600">+ {s.alt || s.url}</span></div>)}
+      {removed.map((s, i) => <div key={`rm-${i}`}><span className="text-diff-remove-foreground">- {s.alt || s.url}</span></div>)}
+      {added.map((s, i) => <div key={`add-${i}`}><span className="text-diff-add-foreground">+ {s.alt || s.url}</span></div>)}
       {captionChanged.map((s, i) => {
         const oldCap = normalizeScreenshots(prev).find((o) => o.url === s.url)?.alt;
-        return <div key={`cap-${i}`}><span className="text-red-500 line-through">{oldCap}</span>{" "}<span className="text-green-600">→ {s.alt}</span></div>;
+        return <div key={`cap-${i}`}><span className="text-diff-remove-foreground line-through">{oldCap}</span>{" "}<span className="text-diff-add-foreground">→ {s.alt}</span></div>;
       })}
       {unchanged.length > 0 && <div className="text-muted-foreground">{unchanged.length} unchanged</div>}
     </div>
@@ -214,13 +214,13 @@ function PricingDiff({ current, prev }) {
     const old = prevMap.get(name);
     if (!old) {
       changes.push(
-        <div key={`new-${name}`} className="text-green-600 text-xs">
+        <div key={`new-${name}`} className="text-diff-add-foreground text-xs">
           + New plan: {name}
         </div>
       );
     } else if (JSON.stringify(plan) !== JSON.stringify(old)) {
       changes.push(
-        <div key={`chg-${name}`} className="text-yellow-600 text-xs">
+        <div key={`chg-${name}`} className="text-warning text-xs">
           ~ {name}: content changed
         </div>
       );
@@ -230,7 +230,7 @@ function PricingDiff({ current, prev }) {
   for (const [name] of prevMap) {
     if (!currMap.has(name)) {
       changes.push(
-        <div key={`rm-${name}`} className="text-red-600 text-xs">
+        <div key={`rm-${name}`} className="text-diff-remove-foreground text-xs">
           - Removed plan: {name}
         </div>
       );

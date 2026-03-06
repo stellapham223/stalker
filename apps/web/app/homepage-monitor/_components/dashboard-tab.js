@@ -77,12 +77,12 @@ function HomepageDiffSummary({ diff }) {
       <div className="space-y-0.5 text-xs">
         {added.slice(0, 3).map((line, i) => (
           <div key={`a-${i}`}>
-            <span className="text-green-600 truncate block max-w-sm">+ {line}</span>
+            <span className="text-diff-add-foreground truncate block max-w-sm">+ {line}</span>
           </div>
         ))}
         {removed.slice(0, 3).map((line, i) => (
           <div key={`r-${i}`}>
-            <span className="text-red-500 truncate block max-w-sm">- {line}</span>
+            <span className="text-diff-remove-foreground truncate block max-w-sm">- {line}</span>
           </div>
         ))}
         {(added.length > 3 || removed.length > 3) && (

@@ -80,25 +80,25 @@ export function GuideDocsDetail({ trackingId, tracking }) {
         )}
 
         {latest?.diff && (
-          <div className="mt-4 rounded-md bg-yellow-50 p-3">
-            <p className="text-sm font-medium text-yellow-800 mb-2">Changes detected:</p>
+          <div className="mt-4 rounded-md bg-warning/15 p-3">
+            <p className="text-sm font-medium text-warning mb-2">Changes detected:</p>
             {latest.diff.added?.map((a, i) => (
-              <span key={`a${i}`} className="inline-block mr-2 mb-1 rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+              <span key={`a${i}`} className="inline-block mr-2 mb-1 rounded bg-diff-add px-2 py-0.5 text-xs text-diff-add-foreground">
                 + {a.label}
               </span>
             ))}
             {latest.diff.removed?.map((r, i) => (
-              <span key={`r${i}`} className="inline-block mr-2 mb-1 rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+              <span key={`r${i}`} className="inline-block mr-2 mb-1 rounded bg-diff-remove px-2 py-0.5 text-xs text-diff-remove-foreground">
                 - {r.label}
               </span>
             ))}
             {latest.diff.renamed?.map((r, i) => (
-              <span key={`rn${i}`} className="inline-block mr-2 mb-1 rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700">
+              <span key={`rn${i}`} className="inline-block mr-2 mb-1 rounded bg-warning/15 px-2 py-0.5 text-xs text-warning">
                 {r.oldLabel} → {r.newLabel}
               </span>
             ))}
             {latest.diff.childrenChanged?.map((c, i) => (
-              <div key={`c${i}`} className="text-xs text-yellow-700 mt-1">
+              <div key={`c${i}`} className="text-xs text-warning mt-1">
                 <span className="font-medium">{c.parentLabel}:</span>
                 {c.addedChildren?.map((a) => ` +${a}`).join("")}
                 {c.removedChildren?.map((r) => ` -${r}`).join("")}
@@ -160,7 +160,7 @@ function NavTreeItem({ item, level, diff }) {
     <div>
       <div
         className={`flex items-center gap-2 py-1 text-sm rounded px-2 ${
-          isAdded ? "bg-green-50 text-green-700" : isRemoved ? "bg-red-50 text-red-700 line-through" : "hover:bg-muted/50"
+          isAdded ? "bg-diff-add text-diff-add-foreground" : isRemoved ? "bg-diff-remove text-diff-remove-foreground line-through" : "hover:bg-muted/50"
         }`}
         style={{ paddingLeft: `${indent + 8}px` }}
       >

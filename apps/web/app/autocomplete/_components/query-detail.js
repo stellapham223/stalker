@@ -149,20 +149,20 @@ function ChangeEntry({ snapshot, isFirst }) {
       <div className="space-y-1">
         {diff.added && diff.added.map((s, i) => (
           <div key={`a-${i}`} className="flex items-center gap-1.5">
-            <span className="text-green-600 font-bold text-xs">+</span>
-            <span className="text-xs text-green-700">{s}</span>
+            <span className="text-diff-add-foreground font-bold text-xs">+</span>
+            <span className="text-xs text-diff-add-foreground">{s}</span>
           </div>
         ))}
         {diff.removed && diff.removed.map((s, i) => (
           <div key={`r-${i}`} className="flex items-center gap-1.5">
-            <span className="text-red-600 font-bold text-xs">−</span>
-            <span className="text-xs text-red-700">{s}</span>
+            <span className="text-diff-remove-foreground font-bold text-xs">−</span>
+            <span className="text-xs text-diff-remove-foreground">{s}</span>
           </div>
         ))}
         {diff.reordered && diff.reordered.map((r, i) => (
           <div key={`o-${i}`} className="flex items-center gap-1.5">
-            <span className="text-yellow-600 font-bold text-xs">↕</span>
-            <span className="text-xs text-yellow-700">
+            <span className="text-warning font-bold text-xs">↕</span>
+            <span className="text-xs text-warning">
               {r.suggestion} (#{r.oldPosition} → #{r.newPosition})
             </span>
           </div>

@@ -36,3 +36,19 @@ This file logs important UX/UI design decisions made by the UX Designer agent. O
 12. **SUGGESTION — No dark mode tokens:** Only light theme defined in globals.css.
 **Rationale:** These issues collectively degrade polish, accessibility, and new-user comprehension. Mixed language is the most impactful — users encounter a jarring switch between Vietnamese and English depending on which page they're on.
 **Affected files:** All page files in `apps/web/app/`, `apps/web/components/sidebar.js`, `apps/web/components/app-shell.js`, `apps/web/app/globals.css`
+
+---
+
+## [2026-03-06] Visual Identity Overhaul — "Deep Ocean" Theme
+**Agent:** UX Designer
+**Decision:** Complete visual redesign with "mysterious + technology" aesthetic. Implemented the "Deep Ocean" palette (deep navy-black + electric cyan) with both dark and light mode support.
+**Changes made:**
+1. **Color palette:** Replaced neutral grayscale with Deep Ocean — navy-black backgrounds (220 25% 6%), electric cyan accents (190 90% 55%). Added semantic tokens for success, warning, info, diffs, and notifications.
+2. **Typography:** Added Space Grotesk (body/headings) + JetBrains Mono (code/data) via next/font/google.
+3. **Visual effects:** Card glow shadows, button hover glow, breathing pulse animation on login page.
+4. **Sidebar:** Glass-morphism (backdrop-blur + transparency), border-left active indicator with cyan highlight instead of solid bg.
+5. **Theme switching:** Added `next-themes` for dark/light toggle with Sun/Moon button in sidebar.
+6. **Hardcoded colors cleanup:** Replaced ALL hardcoded Tailwind colors (bg-red-500, text-green-600, etc.) with semantic design tokens across all feature pages.
+7. **Login page:** Replaced emoji with Lucide Radar icon, added gradient text title, glow animation.
+**Rationale:** Deep Ocean chosen over Cyber Violet and Matrix Emerald for best data readability, professional credibility, and natural diff color contrast. Space Grotesk provides technical character without sacrificing readability.
+**Affected files:** `apps/web/app/globals.css`, `apps/web/tailwind.config.js`, `apps/web/app/layout.js`, `apps/web/components/providers.js`, `apps/web/components/sidebar.js`, `apps/web/components/ui/card.js`, `apps/web/components/ui/button.js`, `apps/web/app/login/page.js`, all `_components/` files across feature pages, `docs/design-system.md`

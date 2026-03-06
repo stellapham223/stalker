@@ -71,7 +71,7 @@ export function HomepageDetail({ trackingId, tracking }) {
                     {section.ctaText.map((cta, i) => (
                       <span
                         key={i}
-                        className="inline-block rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                        className="inline-block rounded bg-info px-2 py-0.5 text-xs text-info-foreground"
                       >
                         {cta}
                       </span>
@@ -101,17 +101,17 @@ export function HomepageDetail({ trackingId, tracking }) {
         )}
 
         {latest?.diff && (
-          <div className="mt-4 rounded-md bg-yellow-50 p-3">
-            <p className="text-sm font-medium text-yellow-800 mb-2">
+          <div className="mt-4 rounded-md bg-warning/15 p-3">
+            <p className="text-sm font-medium text-warning mb-2">
               Changes detected: +{latest.diff.addedCount || 0} / -{latest.diff.removedCount || 0} lines
             </p>
             {latest.diff.added?.slice(0, 5).map((line, i) => (
-              <p key={`a${i}`} className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded mb-1 truncate">
+              <p key={`a${i}`} className="text-xs text-diff-add-foreground bg-diff-add px-2 py-1 rounded mb-1 truncate">
                 + {line}
               </p>
             ))}
             {latest.diff.removed?.slice(0, 5).map((line, i) => (
-              <p key={`r${i}`} className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded mb-1 truncate">
+              <p key={`r${i}`} className="text-xs text-diff-remove-foreground bg-diff-remove px-2 py-1 rounded mb-1 truncate">
                 - {line}
               </p>
             ))}

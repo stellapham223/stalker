@@ -117,8 +117,8 @@ export default function AppListingPage() {
         <button
           className={`px-4 py-2 text-sm font-semibold transition-all border-b-2 ${
             activeTab === DASHBOARD_TAB
-              ? "border-amber-500 text-amber-700 bg-amber-50"
-              : "border-transparent text-muted-foreground hover:text-amber-600 hover:border-amber-300"
+              ? "border-primary text-primary bg-primary/15"
+              : "border-transparent text-muted-foreground hover:text-primary hover:border-primary/50"
           }`}
           onClick={() => setActiveTab(DASHBOARD_TAB)}
         >

@@ -43,9 +43,9 @@ export default function ChangesPage() {
                     key={i}
                     className={
                       line.startsWith("+ ")
-                        ? "text-green-600"
+                        ? "text-diff-add-foreground"
                         : line.startsWith("- ")
-                        ? "text-red-600"
+                        ? "text-diff-remove-foreground"
                         : ""
                     }
                   >

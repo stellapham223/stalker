@@ -90,7 +90,7 @@ export default function CompetitorsPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-block h-2 w-2 rounded-full ${
-                      competitor.active ? "bg-green-500" : "bg-gray-300"
+                      competitor.active ? "bg-success" : "bg-muted-foreground"
                     }`}
                   />
                   <Button

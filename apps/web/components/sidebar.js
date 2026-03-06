@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, AppWindow, Search, Type, Menu, FileText, BookOpen, Settings, LogOut, CircleHelp } from "lucide-react";
+import { useTheme } from "next-themes";
+import { LayoutDashboard, AppWindow, Search, Type, Menu, FileText, BookOpen, Settings, LogOut, CircleHelp, Sun, Moon } from "lucide-react";
 import { useChangesBadge } from "@/hooks/useChangesBadge";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
 export function Sidebar({ session }) {
   const pathname = usePathname();
   const { getFeatureBadge } = useChangesBadge();
+  const { theme, setTheme } = useTheme();
 
   const { data: freshInfo } = useQuery({
     queryKey: ["me-permissions"],
@@ -30,7 +32,7 @@ export function Sidebar({ session }) {
     initialData: session?.user
       ? { isAdmin: session.user.isAdmin, permissions: session.user.permissions ?? {} }
       : undefined,
-    initialDataUpdatedAt: 0, // treat as stale so it always fetches fresh immediately
+    initialDataUpdatedAt: 0,
   });
 
   const permissions = freshInfo?.permissions ?? {};
@@ -39,12 +41,19 @@ export function Sidebar({ session }) {
   const hasAnyPermission = Object.keys(permissions).length > 0;
   const visibleItems = navItems.filter((item) => {
     if (item.permKey === null) return true;
-    if (!hasAnyPermission) return true; // new user: show all until permissions load
+    if (!hasAnyPermission) return true;
     return permissions[item.permKey] !== false;
   });
 
+  const linkClasses = (isActive) =>
+    `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isActive
+        ? "bg-primary/15 text-primary border-l-2 border-primary"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+    }`;
+
   return (
-    <aside className="w-64 border-r bg-card p-4 flex flex-col h-screen sticky top-0">
+    <aside className="w-64 border-r bg-card/80 backdrop-blur-sm p-4 flex flex-col h-screen sticky top-0">
       <div className="mb-8">
         <h2 className="text-lg font-bold">Competitor Stalker</h2>
         <p className="text-sm text-muted-foreground">Monitor competitor changes</p>
@@ -59,16 +68,12 @@ export function Sidebar({ session }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+              className={linkClasses(isActive)}
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {badgeCount > 0 && (
-                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                <span className="rounded-full bg-badge-notification px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
                   {badgeCount > 99 ? "99+" : badgeCount}
                 </span>
               )}
@@ -80,11 +85,7 @@ export function Sidebar({ session }) {
       {isAdmin && (
         <Link
           href="/admin"
-          className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mt-2 ${
-            pathname === "/admin"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          }`}
+          className={linkClasses(pathname === "/admin")}
         >
           <Settings className="h-4 w-4 shrink-0" />
           <span>Admin</span>
@@ -93,11 +94,7 @@ export function Sidebar({ session }) {
 
       <Link
         href="/user-guide"
-        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mt-2 ${
-          pathname === "/user-guide"
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-        }`}
+        className={linkClasses(pathname === "/user-guide")}
       >
         <CircleHelp className="h-4 w-4 shrink-0" />
         <span>User Guide</span>
@@ -107,13 +104,22 @@ export function Sidebar({ session }) {
         <p className="text-xs text-muted-foreground truncate mb-2 px-1">
           {session?.user?.email}
         </p>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-1"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sign out
+          </button>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
     </aside>
   );

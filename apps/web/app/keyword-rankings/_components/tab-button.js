@@ -17,7 +17,7 @@ export function TabButton({ keyword, isActive, onClick, onDelete, badge }) {
     >
       &quot;{keyword.keyword}&quot;
       {badge > 0 && (
-        <span className="ml-1 rounded-full bg-red-500 px-1 py-0.5 text-[10px] font-bold text-white leading-none">
+        <span className="ml-1 rounded-full bg-badge-notification px-1 py-0.5 text-[10px] font-bold text-white leading-none">
           {badge}
         </span>
       )}

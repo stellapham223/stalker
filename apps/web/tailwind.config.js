@@ -7,6 +7,10 @@ const config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "Menlo", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -33,10 +37,35 @@ const config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        "diff-add": {
+          DEFAULT: "hsl(var(--diff-add))",
+          foreground: "hsl(var(--diff-add-foreground))",
+        },
+        "diff-remove": {
+          DEFAULT: "hsl(var(--diff-remove))",
+          foreground: "hsl(var(--diff-remove-foreground))",
+        },
+        "badge-notification": "hsl(var(--badge-notification))",
       },
       borderRadius: {
         lg: "var(--radius)",

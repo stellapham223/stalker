@@ -78,14 +78,14 @@ function AutocompleteDiffSummary({ diff }) {
       <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>
       <div className="space-y-0.5 text-xs">
         {added.map((s, i) => (
-          <div key={`a-${i}`}><span className="text-green-600">+ {s}</span></div>
+          <div key={`a-${i}`}><span className="text-diff-add-foreground">+ {s}</span></div>
         ))}
         {removed.map((s, i) => (
-          <div key={`r-${i}`}><span className="text-red-500">- {s}</span></div>
+          <div key={`r-${i}`}><span className="text-diff-remove-foreground">- {s}</span></div>
         ))}
         {reordered.map((r, i) => (
           <div key={`o-${i}`}>
-            <span className="text-yellow-600">↕ {r.suggestion} (#{r.oldPosition} → #{r.newPosition})</span>
+            <span className="text-warning">↕ {r.suggestion} (#{r.oldPosition} → #{r.newPosition})</span>
           </div>
         ))}
       </div>

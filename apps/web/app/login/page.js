@@ -1,3 +1,4 @@
+import { Radar } from "lucide-react";
 import { LoginButton } from "@/components/auth/login-button";
 
 export default async function LoginPage({ searchParams }) {
@@ -6,10 +7,14 @@ export default async function LoginPage({ searchParams }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm p-8 rounded-xl border bg-card shadow-sm">
+      <div className="w-full max-w-sm p-8 rounded-xl border bg-card card-glow animate-glow">
         <div className="mb-8 text-center">
-          <div className="mb-4 text-4xl">🔍</div>
-          <h1 className="text-2xl font-bold">Competitor Stalker</h1>
+          <div className="mb-4 flex justify-center">
+            <Radar className="h-10 w-10 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-foreground bg-clip-text text-transparent">
+            Competitor Stalker
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Monitor competitor changes
           </p>

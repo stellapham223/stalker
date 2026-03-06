@@ -93,17 +93,17 @@ function ChangeItem({ change }) {
         <span className="font-medium">[{label}]</span>
         <div className="ml-2 mt-0.5 space-y-0.5">
           {removed.map((s, i) => (
-            <div key={`rm-${i}`}><span className="text-red-500">- {s.alt || s.url}</span></div>
+            <div key={`rm-${i}`}><span className="text-diff-remove-foreground">- {s.alt || s.url}</span></div>
           ))}
           {added.map((s, i) => (
-            <div key={`add-${i}`}><span className="text-green-600">+ {s.alt || s.url}</span></div>
+            <div key={`add-${i}`}><span className="text-diff-add-foreground">+ {s.alt || s.url}</span></div>
           ))}
           {captionChanged.map((s, i) => {
             const oldCap = normalizeScreenshots(change.old).find((o) => o.url === s.url)?.alt;
             return (
               <div key={`cap-${i}`}>
-                <span className="text-red-500 line-through">{oldCap}</span>{" "}
-                <span className="text-green-600">→ {s.alt}</span>
+                <span className="text-diff-remove-foreground line-through">{oldCap}</span>{" "}
+                <span className="text-diff-add-foreground">→ {s.alt}</span>
               </div>
             );
           })}
@@ -123,13 +123,13 @@ function ChangeItem({ change }) {
         <span className="font-medium">[{label}]</span>
         <div className="ml-2 mt-0.5 space-y-0.5">
           {[...prevMap.keys()].filter((k) => !currMap.has(k)).map((k) => (
-            <div key={k}><span className="text-red-500">- {k}</span></div>
+            <div key={k}><span className="text-diff-remove-foreground">- {k}</span></div>
           ))}
           {[...currMap.keys()].filter((k) => !prevMap.has(k)).map((k) => (
-            <div key={k}><span className="text-green-600">+ {k}</span></div>
+            <div key={k}><span className="text-diff-add-foreground">+ {k}</span></div>
           ))}
           {[...currMap.keys()].filter((k) => prevMap.has(k) && JSON.stringify(currMap.get(k)) !== JSON.stringify(prevMap.get(k))).map((k) => (
-            <div key={k}><span className="text-yellow-600">~ {k}</span><span className="text-muted-foreground"> content changed</span></div>
+            <div key={k}><span className="text-warning">~ {k}</span><span className="text-muted-foreground"> content changed</span></div>
           ))}
         </div>
       </div>
@@ -143,8 +143,8 @@ function ChangeItem({ change }) {
     return (
       <div className="text-xs">
         <span className="font-medium">[{label}]</span>
-        <span className="ml-2 text-red-500 line-through">{oldStr}</span>
-        <span className="ml-1 text-green-600">→ {newStr}</span>
+        <span className="ml-2 text-diff-remove-foreground line-through">{oldStr}</span>
+        <span className="ml-1 text-diff-add-foreground">→ {newStr}</span>
       </div>
     );
   }
@@ -153,10 +153,10 @@ function ChangeItem({ change }) {
     <div className="text-xs">
       <span className="font-medium">[{label}]</span>
       <div className="ml-2 mt-0.5">
-        <span className="text-red-500">- {oldStr.substring(0, 120)}{oldStr.length > 120 ? "…" : ""}</span>
+        <span className="text-diff-remove-foreground">- {oldStr.substring(0, 120)}{oldStr.length > 120 ? "…" : ""}</span>
       </div>
       <div className="ml-2">
-        <span className="text-green-600">+ {newStr.substring(0, 120)}{newStr.length > 120 ? "…" : ""}</span>
+        <span className="text-diff-add-foreground">+ {newStr.substring(0, 120)}{newStr.length > 120 ? "…" : ""}</span>
       </div>
     </div>
   );

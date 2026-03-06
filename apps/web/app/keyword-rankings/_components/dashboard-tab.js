@@ -77,19 +77,19 @@ function KeywordChangeSummary({ changes }) {
       <div className="space-y-0.5 text-xs">
         {newEntries.map((entry, i) => (
           <div key={`new-${i}`}>
-            <span className="text-green-600">+ #{entry.position} {entry.appName}</span>
+            <span className="text-diff-add-foreground">+ #{entry.position} {entry.appName}</span>
           </div>
         ))}
         {droppedEntries.map((entry, i) => (
           <div key={`drop-${i}`}>
-            <span className="text-red-500">- {entry.appName} (was #{entry.position})</span>
+            <span className="text-diff-remove-foreground">- {entry.appName} (was #{entry.position})</span>
           </div>
         ))}
         {positionChanges.map((entry, i) => {
           const diff = entry.oldPosition - entry.newPosition;
           return (
             <div key={`pos-${i}`}>
-              <span className={diff > 0 ? "text-green-600" : "text-red-500"}>
+              <span className={diff > 0 ? "text-diff-add-foreground" : "text-diff-remove-foreground"}>
                 {diff > 0 ? "↑" : "↓"} {entry.appName}: #{entry.oldPosition} → #{entry.newPosition}
               </span>
             </div>

@@ -94,12 +94,12 @@ export function KeywordDetail({ keywordId, keywordText }) {
               const dropped = (previous.rankings || []).filter((r) => !currSlugs.has(r.appSlug));
               if (dropped.length === 0) return null;
               return (
-                <div className="mt-3 rounded-md bg-red-50 p-3">
-                  <p className="text-sm font-medium text-red-700 mb-1">Dropped from Top 12:</p>
+                <div className="mt-3 rounded-md bg-diff-remove p-3">
+                  <p className="text-sm font-medium text-diff-remove-foreground mb-1">Dropped from Top 12:</p>
                   {dropped.map((app) => (
                     <span
                       key={app.appSlug}
-                      className="inline-block mr-2 mb-1 rounded bg-red-100 px-2 py-0.5 text-xs text-red-700"
+                      className="inline-block mr-2 mb-1 rounded bg-diff-remove px-2 py-0.5 text-xs text-diff-remove-foreground"
                     >
                       {app.appName} (was #{app.position})
                     </span>
@@ -120,7 +120,7 @@ function RankingRow({ app, prev, hasPrevious }) {
     rankingChangeEl = <span className="text-muted-foreground">-</span>;
   } else if (!prev) {
     rankingChangeEl = (
-      <span className="inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-700">
+      <span className="inline-block rounded bg-diff-add px-1.5 py-0.5 text-xs font-semibold text-diff-add-foreground">
         NEW
       </span>
     );
@@ -129,9 +129,9 @@ function RankingRow({ app, prev, hasPrevious }) {
   } else {
     const diff = prev.position - app.position;
     rankingChangeEl = diff > 0 ? (
-      <span className="text-green-600 font-semibold">+{diff}</span>
+      <span className="text-diff-add-foreground font-semibold">+{diff}</span>
     ) : (
-      <span className="text-red-600 font-semibold">{diff}</span>
+      <span className="text-diff-remove-foreground font-semibold">{diff}</span>
     );
   }
 
@@ -151,7 +151,7 @@ function RankingRow({ app, prev, hasPrevious }) {
         ) : !prevSubtitle ? (
           <span className="text-muted-foreground">-</span>
         ) : subtitleChanged ? (
-          <span className="text-red-600">{prevSubtitle}</span>
+          <span className="text-diff-remove-foreground">{prevSubtitle}</span>
         ) : (
           <span className="text-muted-foreground italic">No changes</span>
         )}
