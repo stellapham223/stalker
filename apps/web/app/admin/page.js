@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const isProd = process.env.NODE_ENV === "production";
+const API_BASE = isProd ? (process.env.NEXT_PUBLIC_API_URL || "") : "";
 
 const PAGE_KEYS = [
   { key: "appListing", label: "App Listing" },
@@ -33,7 +34,7 @@ export default function AdminPage() {
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () =>
-      fetch(`${API_URL}/admin/users`, {
+      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users`, {
         credentials: "include",
         headers: authHeaders,
       }).then((r) => {
@@ -45,7 +46,7 @@ export default function AdminPage() {
 
   const addUser = useMutation({
     mutationFn: (email) =>
-      fetch(`${API_URL}/admin/users`, {
+      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
@@ -65,7 +66,7 @@ export default function AdminPage() {
 
   const updateUser = useMutation({
     mutationFn: ({ id, updates }) =>
-      fetch(`${API_URL}/admin/users/${id}`, {
+      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
@@ -76,7 +77,7 @@ export default function AdminPage() {
 
   const deleteUser = useMutation({
     mutationFn: (id) =>
-      fetch(`${API_URL}/admin/users/${id}`, {
+      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/${id}`, {
         method: "DELETE",
         credentials: "include",
         headers: authHeaders,
@@ -86,7 +87,7 @@ export default function AdminPage() {
 
   const importUsers = useMutation({
     mutationFn: (emails) =>
-      fetch(`${API_URL}/admin/users/import`, {
+      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
