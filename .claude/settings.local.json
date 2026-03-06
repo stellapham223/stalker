@@ -26,7 +26,8 @@
       "Bash(PGPASSWORD=stalker_pass psql:*)",
       "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma generate:*)",
       "Bash(grep:*)",
-      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma migrate dev:*)"
+      "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma migrate dev:*)",
+      "Bash(where:*)"
     ]
   }
 }
