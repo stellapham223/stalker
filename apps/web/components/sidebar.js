@@ -47,7 +47,7 @@ export function Sidebar({ session }) {
     <aside className="w-64 border-r bg-card p-4 flex flex-col h-screen sticky top-0">
       <div className="mb-8">
         <h2 className="text-lg font-bold">Competitor Stalker</h2>
-        <p className="text-sm text-muted-foreground">Monitor &amp; track changes</p>
+        <p className="text-sm text-muted-foreground">Monitor competitor changes</p>
       </div>
 
       <nav className="space-y-1 flex-1 overflow-y-auto">

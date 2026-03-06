@@ -134,7 +134,7 @@ export default function AdminPage() {
       {/* Add single email */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Thêm người dùng</CardTitle>
+          <CardTitle className="text-base">Add User</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddEmail} className="flex gap-3">
@@ -147,7 +147,7 @@ export default function AdminPage() {
               required
             />
             <Button type="submit" disabled={addUser.isPending}>
-              {addUser.isPending ? "Đang thêm..." : "Thêm"}
+              {addUser.isPending ? "Adding..." : "Add"}
             </Button>
           </form>
           {addUser.isError && (
@@ -161,14 +161,14 @@ export default function AdminPage() {
               className="text-sm text-primary hover:underline"
               onClick={() => setShowCsv(!showCsv)}
             >
-              {showCsv ? "Ẩn" : "Import nhiều email (CSV)"}
+              {showCsv ? "Hide" : "Bulk import (CSV)"}
             </button>
 
             {showCsv && (
               <div className="mt-3 space-y-2">
                 <textarea
                   className="w-full rounded-md border border-input px-3 py-2 text-sm font-mono h-28 resize-none"
-                  placeholder={"email1@example.com\nemail2@example.com\nhoặc phân cách bằng dấu phẩy/chấm phẩy"}
+                  placeholder={"email1@example.com\nemail2@example.com\nSeparate with newlines, commas, or semicolons"}
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
                 />
@@ -179,7 +179,7 @@ export default function AdminPage() {
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    Chọn file CSV
+                    Choose CSV File
                   </Button>
                   <input
                     ref={fileInputRef}
@@ -194,13 +194,13 @@ export default function AdminPage() {
                     onClick={handleCsvImport}
                     disabled={importUsers.isPending || !csvText.trim()}
                   >
-                    {importUsers.isPending ? "Đang import..." : "Import"}
+                    {importUsers.isPending ? "Importing..." : "Import"}
                   </Button>
                 </div>
                 {importResult && (
                   <p className="text-sm text-muted-foreground">
-                    Đã thêm {importResult.created}/{importResult.total} email
-                    {importResult.failed > 0 && ` (${importResult.failed} lỗi/trùng)`}
+                    Added {importResult.created}/{importResult.total} emails
+                    {importResult.failed > 0 && ` (${importResult.failed} failed/duplicate)`}
                   </p>
                 )}
               </div>
@@ -212,7 +212,7 @@ export default function AdminPage() {
       {/* Users table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{users.length} người dùng</CardTitle>
+          <CardTitle className="text-base">{users.length} Users</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -266,10 +266,10 @@ export default function AdminPage() {
                       <button
                         className="text-xs text-destructive hover:underline"
                         onClick={() => {
-                          if (confirm(`Xóa "${user.email}"?`)) deleteUser.mutate(user.id);
+                          if (confirm(`Delete "${user.email}"?`)) deleteUser.mutate(user.id);
                         }}
                       >
-                        Xóa
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -277,7 +277,7 @@ export default function AdminPage() {
                 {users.length === 0 && (
                   <tr>
                     <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                      Chưa có user nào. Thêm email ở trên.
+                      No users yet. Add an email above to get started.
                     </td>
                   </tr>
                 )}

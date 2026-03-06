@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 
 export const metadata = {
   title: "Competitor Stalker",
-  description: "Monitor competitor changes over time",
+  description: "Monitor competitor changes",
   icons: {
     icon: "/favicon.svg",
   },
