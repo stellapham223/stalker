@@ -9,6 +9,8 @@
     "dev": "bun run --filter './apps/*' dev",
     "dev:api": "bun run --cwd apps/api dev",
     "dev:web": "bun run --cwd apps/web dev",
+    "dev:functions": "cd apps/functions && npm run serve",
+    "deploy:functions": "firebase deploy --only functions",
     "db:push": "bun run --cwd apps/api db:push",
     "db:studio": "bun run --cwd apps/api db:studio",
     "db:generate": "bun run --cwd apps/api db:generate"
