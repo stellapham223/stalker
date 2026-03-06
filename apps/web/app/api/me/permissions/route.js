@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 const API_URL = process.env.NEXTAUTH_API_URL || "http://localhost:4000";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.email) {

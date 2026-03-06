@@ -23,7 +23,7 @@ export function Sidebar({ session }) {
 
   const { data: freshInfo } = useQuery({
     queryKey: ["me-permissions"],
-    queryFn: () => fetch("/api/me/permissions").then((r) => r.json()),
+    queryFn: () => fetch("/api/me/permissions", { cache: "no-store" }).then((r) => r.json()),
     enabled: !!session?.user?.email,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
