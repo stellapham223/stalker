@@ -33,7 +33,7 @@ export default function AdminPage() {
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () =>
-      fetch(`${API_URL}/api/admin/users`, {
+      fetch(`${API_URL}/admin/users`, {
         credentials: "include",
         headers: authHeaders,
       }).then((r) => {
@@ -45,7 +45,7 @@ export default function AdminPage() {
 
   const addUser = useMutation({
     mutationFn: (email) =>
-      fetch(`${API_URL}/api/admin/users`, {
+      fetch(`${API_URL}/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
@@ -65,7 +65,7 @@ export default function AdminPage() {
 
   const updateUser = useMutation({
     mutationFn: ({ id, updates }) =>
-      fetch(`${API_URL}/api/admin/users/${id}`, {
+      fetch(`${API_URL}/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
@@ -76,7 +76,7 @@ export default function AdminPage() {
 
   const deleteUser = useMutation({
     mutationFn: (id) =>
-      fetch(`${API_URL}/api/admin/users/${id}`, {
+      fetch(`${API_URL}/admin/users/${id}`, {
         method: "DELETE",
         credentials: "include",
         headers: authHeaders,
@@ -86,7 +86,7 @@ export default function AdminPage() {
 
   const importUsers = useMutation({
     mutationFn: (emails) =>
-      fetch(`${API_URL}/api/admin/users/import`, {
+      fetch(`${API_URL}/admin/users/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
