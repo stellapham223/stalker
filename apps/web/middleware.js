@@ -35,7 +35,11 @@ export default auth((req) => {
 
   // User was deleted from allowed list — force sign out
   if (session.user?.revoked) {
-    return NextResponse.redirect(new URL("/api/auth/signout?callbackUrl=/login", nextUrl));
+    const res = NextResponse.redirect(new URL("/login", nextUrl));
+    // Clear the session cookie so NextAuth doesn't restore it
+    res.cookies.delete("__Secure-authjs.session-token");
+    res.cookies.delete("authjs.session-token");
+    return res;
   }
 
   // Admin page: require isAdmin
