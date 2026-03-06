@@ -30,6 +30,6 @@ jobs:
 
       - name: Deploy to Firebase
         working-directory: apps/functions
-        run: firebase deploy --only functions --project marketing-stalker-tool --non-interactive
+        run: firebase deploy --only functions --project marketing-stalker-tool --non-interactive --force
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
