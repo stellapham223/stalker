@@ -19,15 +19,19 @@ export async function scrapeAppListing(appUrl) {
   const subtitleMatch = pageTitle.match(/^.+?\s*[-–]\s*(.+?)\s*\|\s*Shopify App Store/);
   const subtitle = subtitleMatch ? subtitleMatch[1].trim() : "";
 
+  const galleryContainer = $(".gallery-component").first();
   const screenshotMap = new Map();
-  $('img[src*="cdn.shopify.com/app-store/listing_images"]').each((_, el) => {
+  const imgSelector = 'img[src*="cdn.shopify.com/app-store/listing_images"]';
+  (galleryContainer.length ? galleryContainer : $("body")).find(imgSelector).each((_, el) => {
     const url = $(el).attr("src")?.trim();
     const alt = $(el).attr("alt")?.trim() || "";
     if (!url) return;
     const baseUrl = url.split("?")[0];
     if (!screenshotMap.has(baseUrl)) screenshotMap.set(baseUrl, { url: baseUrl, alt });
   });
-  const screenshots = [...screenshotMap.values()].filter((s) => s.alt !== title);
+  const screenshots = [...screenshotMap.values()].filter(
+    (s) => s.alt !== title && !s.url.includes("/icon/")
+  );
 
   const videoSet = new Set();
   $('iframe[src*="youtube"], iframe[src*="vimeo"]').each((_, el) => {
