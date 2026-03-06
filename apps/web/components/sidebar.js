@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, AppWindow, Search, Type, Menu, FileText, BookOpen, Settings, LogOut } from "lucide-react";
 import { useChangesBadge } from "@/hooks/useChangesBadge";
 
@@ -20,11 +21,19 @@ export function Sidebar({ session }) {
   const pathname = usePathname();
   const { getFeatureBadge } = useChangesBadge();
 
-  const permissions = session?.user?.permissions || {};
-  const isAdmin = session?.user?.isAdmin;
+  const { data: freshInfo, isSuccess } = useQuery({
+    queryKey: ["me-permissions"],
+    queryFn: () => fetch("/api/me/permissions").then((r) => r.json()),
+    enabled: !!session?.user?.email,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const permissions = isSuccess ? (freshInfo?.permissions ?? {}) : {};
+  const isAdmin = isSuccess ? (freshInfo?.isAdmin ?? false) : false;
 
   const visibleItems = navItems.filter((item) =>
-    item.permKey === null ? true : permissions[item.permKey] !== false
+    item.permKey === null ? true : permissions[item.permKey] === true
   );
 
   return (
