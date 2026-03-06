@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "source": "apps/functions",
+    "runtime": "nodejs20",
+    "codebase": "default"
+  },
+  "emulators": {
+    "functions": {
+      "host": "localhost",
+      "port": 5001
+    }
+  }
+}

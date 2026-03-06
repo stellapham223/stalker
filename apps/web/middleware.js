@@ -16,8 +16,8 @@ export default auth((req) => {
   const isLoggedIn = !!session;
   const path = nextUrl.pathname;
 
-  // Always allow NextAuth API routes
-  if (path.startsWith("/api/auth")) return NextResponse.next();
+  // Always allow API routes (proxied to backend) and NextAuth routes
+  if (path.startsWith("/api/")) return NextResponse.next();
 
   // Redirect logged-in users away from login page
   if (path === "/login") {

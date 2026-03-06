@@ -24,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!email) return false;
 
       try {
-        const res = await fetch(`${API_URL}/api/auth/check-email`, {
+        const res = await fetch(`${API_URL}/auth/check-email`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.email || trigger === "update") {
         const email = token.email;
         try {
-          const res = await fetch(`${API_URL}/api/auth/session-info`, {
+          const res = await fetch(`${API_URL}/auth/session-info`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
