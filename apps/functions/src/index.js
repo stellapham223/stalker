@@ -76,6 +76,7 @@ export const api = onRequest(
     region: "asia-southeast1",
     memory: "1GiB",
     timeoutSeconds: 300,
+    invoker: "public",
     secrets: [telegramBotToken, telegramChatId, nextauthSecret],
   },
   app
