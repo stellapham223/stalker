@@ -9,26 +9,8 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  # Detect nếu functions có thay đổi
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      functions: ${{ steps.filter.outputs.functions }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            functions:
-              - 'apps/functions/**'
-              - 'packages/shared/**'
-              - 'firebase.json'
-
   # Deploy Firebase Functions
   deploy-functions:
-    needs: changes
-    if: needs.changes.outputs.functions == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
