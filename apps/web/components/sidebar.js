@@ -21,16 +21,20 @@ export function Sidebar({ session }) {
   const pathname = usePathname();
   const { getFeatureBadge } = useChangesBadge();
 
-  const { data: freshInfo, isSuccess } = useQuery({
+  const { data: freshInfo } = useQuery({
     queryKey: ["me-permissions"],
     queryFn: () => fetch("/api/me/permissions").then((r) => r.json()),
     enabled: !!session?.user?.email,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    initialData: session?.user
+      ? { isAdmin: session.user.isAdmin, permissions: session.user.permissions ?? {} }
+      : undefined,
+    initialDataUpdatedAt: 0, // treat as stale so it always fetches fresh immediately
   });
 
-  const permissions = isSuccess ? (freshInfo?.permissions ?? {}) : {};
-  const isAdmin = isSuccess ? (freshInfo?.isAdmin ?? false) : false;
+  const permissions = freshInfo?.permissions ?? {};
+  const isAdmin = freshInfo?.isAdmin ?? false;
 
   const visibleItems = navItems.filter((item) =>
     item.permKey === null ? true : permissions[item.permKey] === true
