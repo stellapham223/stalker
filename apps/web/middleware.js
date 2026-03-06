@@ -33,6 +33,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
+  // User was deleted from allowed list — force sign out
+  if (session.user?.revoked) {
+    return NextResponse.redirect(new URL("/api/auth/signout?callbackUrl=/login", nextUrl));
+  }
+
   // Admin page: require isAdmin
   if (path.startsWith("/admin")) {
     if (!session.user?.isAdmin) {

@@ -41,13 +41,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user, trigger }) {
-      console.log("[jwt] trigger:", trigger, "user:", user?.email, "token.isAdmin:", token.isAdmin);
       if (user?.email) {
         token.email = user.email.toLowerCase().trim();
       }
-      // Fetch permissions on first sign-in or when session is updated
-      if (user?.email || trigger === "update") {
-        const email = token.email;
+      // Always re-verify user exists and fetch fresh permissions
+      if (token.email) {
         try {
           const res = await fetch(`${API_URL}/auth/session-info`, {
             method: "POST",
@@ -55,17 +53,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               "Content-Type": "application/json",
               "X-Internal-Auth": process.env.NEXTAUTH_SECRET || "",
             },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({ email: token.email }),
           });
           if (res.ok) {
             const info = await res.json();
             token.isAdmin = info.isAdmin ?? false;
             token.permissions = info.permissions ?? {};
+            token.revoked = false;
+          } else {
+            // User not found (404) or error — revoke session
+            token.revoked = true;
           }
         } catch (e) {
           console.error("[auth] session-info fetch failed:", e.message);
-          token.isAdmin = false;
-          token.permissions = {};
         }
       }
       return token;
@@ -77,6 +77,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.email = token.email;
         session.user.isAdmin = token.isAdmin ?? false;
         session.user.permissions = token.permissions ?? {};
+        session.user.revoked = token.revoked ?? false;
       }
       return session;
     },
