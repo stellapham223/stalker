@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, AppWindow, Search, Type, Menu, FileText, BookOpen, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, AppWindow, Search, Type, Menu, FileText, BookOpen, Settings, LogOut, CircleHelp } from "lucide-react";
 import { useChangesBadge } from "@/hooks/useChangesBadge";
 
 const navItems = [
@@ -90,6 +90,18 @@ export function Sidebar({ session }) {
           <span>Admin</span>
         </Link>
       )}
+
+      <Link
+        href="/user-guide"
+        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mt-2 ${
+          pathname === "/user-guide"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <CircleHelp className="h-4 w-4 shrink-0" />
+        <span>User Guide</span>
+      </Link>
 
       <div className="mt-4 pt-4 border-t">
         <p className="text-xs text-muted-foreground truncate mb-2 px-1">
