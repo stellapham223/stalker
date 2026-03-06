@@ -4,8 +4,7 @@
 const BACKEND_URL = process.env.NEXTAUTH_API_URL || "http://localhost:4000";
 
 const nextConfig = {
-  transpilePackages: ["@competitor-stalker/shared"],
-  async rewrites() {
+async rewrites() {
     return [
       {
         // Proxy all /api/* except /api/auth/* (NextAuth routes)
