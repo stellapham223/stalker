@@ -48,7 +48,7 @@ export default auth((req) => {
 
   if (permKey) {
     const allowed = session.user?.permissions?.[PERMISSION_MAP[permKey]];
-    if (allowed !== true) {
+    if (allowed === false) {
       return NextResponse.redirect(new URL("/unauthorized", nextUrl));
     }
   }

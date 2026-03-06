@@ -37,7 +37,7 @@ export function Sidebar({ session }) {
   const isAdmin = freshInfo?.isAdmin ?? false;
 
   const visibleItems = navItems.filter((item) =>
-    item.permKey === null ? true : permissions[item.permKey] === true
+    item.permKey === null ? true : permissions[item.permKey] !== false
   );
 
   return (
