@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrdered, getById, createDoc, updateDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getById, createDoc, updateDoc, deleteDocWithSnapshots,
   getSnapshots, serializeDocs, serializeDoc, uuid,
 } from "../db/helpers.js";
+import { requireAuth, checkOwnership } from "./middleware.js";
 
 const COLLECTION = "competitors";
 export const competitorRoutes = Router();
 
+competitorRoutes.use(requireAuth);
+
 competitorRoutes.get("/", async (req, res) => {
   try {
-    const competitors = await getAllOrdered(COLLECTION, "desc");
-    // Include trackedFields subcollection
+    const competitors = await getAllOrderedByOwner(COLLECTION, req.userEmail, "desc");
     for (const comp of competitors) {
       const tfSnap = await db.collection(COLLECTION).doc(comp.id).collection("trackedFields").get();
       comp.trackedFields = tfSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -24,14 +26,12 @@ competitorRoutes.get("/", async (req, res) => {
 
 competitorRoutes.get("/:id", async (req, res) => {
   try {
-    const competitor = await getById(COLLECTION, req.params.id);
-    if (!competitor) return res.status(404).json({ error: "Not found" });
+    const { doc: competitor, allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
 
-    // Get tracked fields
     const tfSnap = await db.collection(COLLECTION).doc(req.params.id).collection("trackedFields").get();
     competitor.trackedFields = tfSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-    // Get recent snapshots
     competitor.snapshots = serializeDocs(await getSnapshots(COLLECTION, req.params.id, 20));
 
     res.json(serializeDoc(competitor));
@@ -44,10 +44,9 @@ competitorRoutes.post("/", async (req, res) => {
   try {
     const { name, url, type, trackedFields } = req.body;
     const competitor = await createDoc(COLLECTION, {
-      name, url, type: type || "website", active: true,
+      name, url, type: type || "website", active: true, ownerEmail: req.userEmail,
     });
 
-    // Create tracked fields as subcollection
     if (trackedFields && trackedFields.length > 0) {
       for (const tf of trackedFields) {
         const tfId = uuid();
@@ -70,6 +69,10 @@ competitorRoutes.post("/", async (req, res) => {
 
 competitorRoutes.patch("/:id", async (req, res) => {
   try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+
     const { name, url, type, active } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
@@ -90,7 +93,10 @@ competitorRoutes.patch("/:id", async (req, res) => {
 
 competitorRoutes.delete("/:id", async (req, res) => {
   try {
-    // Delete tracked fields subcollection too
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+
     const tfSnap = await db.collection(COLLECTION).doc(req.params.id).collection("trackedFields").get();
     const batch = db.batch();
     tfSnap.docs.forEach((d) => batch.delete(d.ref));

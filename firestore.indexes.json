@@ -1,0 +1,93 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "competitors",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "keywordTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "keywordTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "autocompleteTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "autocompleteTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "appListingCompetitors",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "websiteMenuTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "websiteMenuTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homepageTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homepageTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "guideDocsTrackings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

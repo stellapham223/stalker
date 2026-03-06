@@ -1,18 +1,21 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrdered, getById, createDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
-  getAllSnapshots, serializeDocs, serializeDoc,
+  serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeAutocomplete, computeAutocompleteDiff } from "../scrapers/autocompleteScraper.js";
+import { requireAuth, checkOwnership } from "./middleware.js";
 
 const COLLECTION = "autocompleteTrackings";
 export const autocompleteRoutes = Router();
 
+autocompleteRoutes.use(requireAuth);
+
 autocompleteRoutes.get("/", async (req, res) => {
   try {
-    const items = await getAllOrdered(COLLECTION, "desc");
+    const items = await getAllOrderedByOwner(COLLECTION, req.userEmail, "desc");
     res.json(serializeDocs(items));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,6 +29,7 @@ autocompleteRoutes.post("/", async (req, res) => {
       query,
       targetUrl: targetUrl || "https://apps.shopify.com",
       active: true,
+      ownerEmail: req.userEmail,
     });
     res.status(201).json(serializeDoc(item));
   } catch (err) {
@@ -35,6 +39,9 @@ autocompleteRoutes.post("/", async (req, res) => {
 
 autocompleteRoutes.delete("/:id", async (req, res) => {
   try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
     await deleteDocWithSnapshots(COLLECTION, req.params.id);
     res.status(204).end();
   } catch (err) {
@@ -74,8 +81,8 @@ autocompleteRoutes.get("/:id/changes", async (req, res) => {
 
 autocompleteRoutes.get("/dashboard", async (req, res) => {
   try {
-    const trackings = await getAllOrdered(COLLECTION, "asc");
-    const allSnapshots = await getAllSnapshots(COLLECTION);
+    const trackings = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
+    const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
     const WINDOW_MS = 5 * 60 * 1000;
     const sessions = [];
@@ -101,12 +108,7 @@ autocompleteRoutes.get("/dashboard", async (req, res) => {
           (diff.removed && diff.removed.length > 0) ||
           (diff.reordered && diff.reordered.length > 0)
         );
-
-        return {
-          trackingId: tracking.id,
-          query: tracking.query,
-          changes: hasChanges ? diff : [],
-        };
+        return { trackingId: tracking.id, query: tracking.query, changes: hasChanges ? diff : [] };
       });
 
       const createdAt = session.createdAt?.toDate ? session.createdAt.toDate().toISOString() : session.createdAt;
@@ -123,15 +125,10 @@ autocompleteRoutes.post("/scrape-all", async (req, res) => {
   try {
     const snap = await db.collection(COLLECTION).where("active", "==", true).get();
     const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
     for (const tracking of trackings) {
-      try {
-        await runAutocompleteScrape(tracking);
-      } catch (err) {
-        console.error(`[autocomplete] Failed to scrape "${tracking.query}":`, err.message);
-      }
+      try { await runAutocompleteScrape(tracking); }
+      catch (err) { console.error(`[autocomplete] Failed to scrape "${tracking.query}":`, err.message); }
     }
-
     res.json({ message: `${trackings.length} autocomplete scrapes completed` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -142,7 +139,6 @@ autocompleteRoutes.post("/:id/scrape", async (req, res) => {
   try {
     const tracking = await getById(COLLECTION, req.params.id);
     if (!tracking) return res.status(404).json({ error: "Not found" });
-
     await runAutocompleteScrape(tracking);
     res.json({ message: "Autocomplete scrape completed" });
   } catch (err) {
@@ -152,27 +148,13 @@ autocompleteRoutes.post("/:id/scrape", async (req, res) => {
 
 export async function runAutocompleteScrape(tracking) {
   console.log(`[autocomplete] Starting scrape for "${tracking.query}"`);
-
   const { suggestions, appSuggestions, rawResponse } = await scrapeAutocomplete(tracking.query);
-
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-
-  const { diff, hasChanges } = computeAutocompleteDiff(
-    previous?.suggestions || null,
-    suggestions
-  );
-
+  const { diff, hasChanges } = computeAutocompleteDiff(previous?.suggestions || null, suggestions);
   await addSnapshot(COLLECTION, tracking.id, {
-    trackingId: tracking.id,
-    suggestions,
-    appSuggestions,
-    rawResponse,
+    trackingId: tracking.id, suggestions, appSuggestions, rawResponse,
     diff: hasChanges ? diff : null,
   });
-
-  if (hasChanges) {
-    console.log(`[autocomplete] Changes detected for "${tracking.query}"`);
-  }
-
+  if (hasChanges) console.log(`[autocomplete] Changes detected for "${tracking.query}"`);
   console.log(`[autocomplete] Completed scrape for "${tracking.query}" (${suggestions.length} suggestions)`);
 }

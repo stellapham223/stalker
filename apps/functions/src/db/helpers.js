@@ -31,6 +31,64 @@ export async function getAllOrdered(collection, order = "asc") {
 }
 
 /**
+ * Get all documents belonging to a specific owner, ordered by createdAt.
+ */
+export async function getAllOrderedByOwner(collection, ownerEmail, order = "asc") {
+  const snap = await db
+    .collection(collection)
+    .where("ownerEmail", "==", ownerEmail)
+    .orderBy("createdAt", order)
+    .get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Get active documents belonging to a specific owner.
+ */
+export async function getActiveItemsByOwner(collection, ownerEmail) {
+  const snap = await db
+    .collection(collection)
+    .where("ownerEmail", "==", ownerEmail)
+    .where("active", "==", true)
+    .get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Get all snapshots across documents owned by a specific user (for dashboard).
+ */
+export async function getAllSnapshotsByOwner(collection, ownerEmail) {
+  const parents = await db
+    .collection(collection)
+    .where("ownerEmail", "==", ownerEmail)
+    .get();
+  const allSnapshots = [];
+
+  for (const parent of parents.docs) {
+    const snaps = await parent.ref
+      .collection("snapshots")
+      .orderBy("createdAt", "desc")
+      .get();
+    snaps.docs.forEach((s) => {
+      allSnapshots.push({
+        id: s.id,
+        parentId: parent.id,
+        parentName: parent.data().name || parent.data().keyword || parent.data().query || "",
+        ...s.data(),
+      });
+    });
+  }
+
+  allSnapshots.sort((a, b) => {
+    const ta = a.createdAt?.toDate?.() || new Date(a.createdAt);
+    const tb = b.createdAt?.toDate?.() || new Date(b.createdAt);
+    return tb - ta;
+  });
+
+  return allSnapshots;
+}
+
+/**
  * Get a single document by ID.
  */
 export async function getById(collection, id) {
@@ -130,14 +188,12 @@ export async function getSnapshotsWithChanges(
   parentId,
   limit = 30
 ) {
-  // Firestore can't query "not null" on arbitrary fields easily,
-  // so we fetch all and filter. For small datasets this is fine.
   const snap = await db
     .collection(collection)
     .doc(parentId)
     .collection("snapshots")
     .orderBy("createdAt", "desc")
-    .limit(limit * 3) // fetch extra to account for filtering
+    .limit(limit * 3)
     .get();
 
   return snap.docs

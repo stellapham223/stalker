@@ -1,52 +1,82 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrdered, getById, createDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
-  getAllSnapshots, serializeDocs, serializeDoc,
+  serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeHomepageContent, computeHomepageDiff } from "../scrapers/homepageScraper.js";
+import { requireAuth, checkOwnership } from "./middleware.js";
 
 const COLLECTION = "homepageTrackings";
 export const homepageRoutes = Router();
 
+homepageRoutes.use(requireAuth);
+
 homepageRoutes.get("/", async (req, res) => {
-  const items = await getAllOrdered(COLLECTION, "desc");
-  res.json(serializeDocs(items));
+  try {
+    const items = await getAllOrderedByOwner(COLLECTION, req.userEmail, "desc");
+    res.json(serializeDocs(items));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.post("/", async (req, res) => {
-  const { name, url } = req.body;
-  const tracking = await createDoc(COLLECTION, { name, url, active: true });
-  res.status(201).json(serializeDoc(tracking));
+  try {
+    const { name, url } = req.body;
+    const tracking = await createDoc(COLLECTION, { name, url, active: true, ownerEmail: req.userEmail });
+    res.status(201).json(serializeDoc(tracking));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.delete("/:id", async (req, res) => {
-  await deleteDocWithSnapshots(COLLECTION, req.params.id);
-  res.status(204).end();
+  try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+    await deleteDocWithSnapshots(COLLECTION, req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.get("/:id/snapshots", async (req, res) => {
-  const { limit = "50" } = req.query;
-  const snapshots = await getSnapshots(COLLECTION, req.params.id, parseInt(limit, 10));
-  res.json(serializeDocs(snapshots.map((s) => ({ ...s, trackingId: req.params.id }))));
+  try {
+    const { limit = "50" } = req.query;
+    const snapshots = await getSnapshots(COLLECTION, req.params.id, parseInt(limit, 10));
+    res.json(serializeDocs(snapshots.map((s) => ({ ...s, trackingId: req.params.id }))));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.get("/:id/snapshots/latest", async (req, res) => {
-  const snapshot = await getLatestSnapshot(COLLECTION, req.params.id);
-  res.json(snapshot ? serializeDoc({ ...snapshot, trackingId: req.params.id }) : null);
+  try {
+    const snapshot = await getLatestSnapshot(COLLECTION, req.params.id);
+    res.json(snapshot ? serializeDoc({ ...snapshot, trackingId: req.params.id }) : null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.get("/:id/changes", async (req, res) => {
-  const { limit = "30" } = req.query;
-  const changes = await getSnapshotsWithChanges(COLLECTION, req.params.id, parseInt(limit, 10));
-  res.json(serializeDocs(changes.map((s) => ({ ...s, trackingId: req.params.id }))));
+  try {
+    const { limit = "30" } = req.query;
+    const changes = await getSnapshotsWithChanges(COLLECTION, req.params.id, parseInt(limit, 10));
+    res.json(serializeDocs(changes.map((s) => ({ ...s, trackingId: req.params.id }))));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.get("/dashboard", async (req, res) => {
   try {
-    const trackings = await getAllOrdered(COLLECTION, "asc");
-    const allSnapshots = await getAllSnapshots(COLLECTION);
+    const trackings = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
+    const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
     const WINDOW_MS = 5 * 60 * 1000;
     const sessions = [];
@@ -71,12 +101,7 @@ homepageRoutes.get("/dashboard", async (req, res) => {
           (diff.addedCount && diff.addedCount > 0) ||
           (diff.removedCount && diff.removedCount > 0)
         );
-
-        return {
-          trackingId: tracking.id,
-          name: tracking.name,
-          changes: hasChanges ? diff : [],
-        };
+        return { trackingId: tracking.id, name: tracking.name, changes: hasChanges ? diff : [] };
       });
 
       const createdAt = session.createdAt?.toDate ? session.createdAt.toDate().toISOString() : session.createdAt;
@@ -90,52 +115,39 @@ homepageRoutes.get("/dashboard", async (req, res) => {
 });
 
 homepageRoutes.post("/:id/scrape", async (req, res) => {
-  const tracking = await getById(COLLECTION, req.params.id);
-  if (!tracking) return res.status(404).json({ error: "Not found" });
-
-  await runHomepageScrape(tracking);
-  res.json({ message: `Homepage scrape completed for "${tracking.name}"` });
+  try {
+    const tracking = await getById(COLLECTION, req.params.id);
+    if (!tracking) return res.status(404).json({ error: "Not found" });
+    await runHomepageScrape(tracking);
+    res.json({ message: `Homepage scrape completed for "${tracking.name}"` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 homepageRoutes.post("/scrape-all", async (req, res) => {
-  const snap = await db.collection(COLLECTION).where("active", "==", true).get();
-  const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-  for (const tracking of trackings) {
-    try {
-      await runHomepageScrape(tracking);
-    } catch (err) {
-      console.error(`[homepage] Failed to scrape "${tracking.name}":`, err.message);
+  try {
+    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    for (const tracking of trackings) {
+      try { await runHomepageScrape(tracking); }
+      catch (err) { console.error(`[homepage] Failed to scrape "${tracking.name}":`, err.message); }
     }
+    res.json({ message: `${trackings.length} homepage scrapes completed` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  res.json({ message: `${trackings.length} homepage scrapes completed` });
 });
 
 export async function runHomepageScrape(tracking) {
   console.log(`[homepage] Starting scrape for: ${tracking.name}`);
-
   const { sections, stats, testimonials, fullText } = await scrapeHomepageContent(tracking.url);
-
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-
-  const { diff, hasChanges } = computeHomepageDiff(
-    previous?.fullText || null,
-    fullText
-  );
-
+  const { diff, hasChanges } = computeHomepageDiff(previous?.fullText || null, fullText);
   await addSnapshot(COLLECTION, tracking.id, {
-    trackingId: tracking.id,
-    sections,
-    stats,
-    testimonials,
-    fullText,
+    trackingId: tracking.id, sections, stats, testimonials, fullText,
     diff: hasChanges ? diff : null,
   });
-
-  if (hasChanges) {
-    console.log(`[homepage] Changes detected for "${tracking.name}"`);
-  }
-
+  if (hasChanges) console.log(`[homepage] Changes detected for "${tracking.name}"`);
   console.log(`[homepage] Completed scrape for "${tracking.name}" (${sections.length} sections)`);
 }

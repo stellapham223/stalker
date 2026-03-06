@@ -1,4 +1,5 @@
 import { getUserByEmail } from "../db/allowedUsers.js";
+import { getById } from "../db/helpers.js";
 
 export async function requireAuth(req, res, next) {
   const email = req.headers["x-user-email"];
@@ -12,4 +13,11 @@ export async function requireAuth(req, res, next) {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+}
+
+export async function checkOwnership(collection, id, userEmail) {
+  const doc = await getById(collection, id);
+  if (!doc) return { doc: null, allowed: false, notFound: true };
+  if (doc.ownerEmail !== userEmail) return { doc, allowed: false, notFound: false };
+  return { doc, allowed: true, notFound: false };
 }

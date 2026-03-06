@@ -1,24 +1,31 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrdered, getById, createDoc, updateDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, updateDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot,
-  getAllSnapshots, serializeDocs, serializeDoc,
+  serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeGuideDocs, computeGuideDocsDiff } from "../scrapers/guideDocsScraper.js";
+import { requireAuth, checkOwnership } from "./middleware.js";
 
 const COLLECTION = "guideDocsTrackings";
 export const guideDocsRoutes = Router();
 
+guideDocsRoutes.use(requireAuth);
+
 guideDocsRoutes.get("/", async (req, res) => {
-  const items = await getAllOrdered(COLLECTION, "asc");
-  res.json(serializeDocs(items));
+  try {
+    const items = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
+    res.json(serializeDocs(items));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 guideDocsRoutes.post("/", async (req, res) => {
   try {
     const { name, url } = req.body;
-    const tracking = await createDoc(COLLECTION, { name, url, active: true });
+    const tracking = await createDoc(COLLECTION, { name, url, active: true, ownerEmail: req.userEmail });
     res.status(201).json(serializeDoc(tracking));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -27,6 +34,10 @@ guideDocsRoutes.post("/", async (req, res) => {
 
 guideDocsRoutes.put("/:id", async (req, res) => {
   try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+
     const { name, url, active } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
@@ -41,6 +52,9 @@ guideDocsRoutes.put("/:id", async (req, res) => {
 
 guideDocsRoutes.delete("/:id", async (req, res) => {
   try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
     await deleteDocWithSnapshots(COLLECTION, req.params.id);
     res.status(204).end();
   } catch (err) {
@@ -62,7 +76,6 @@ guideDocsRoutes.post("/:id/scrape", async (req, res) => {
   try {
     const tracking = await getById(COLLECTION, req.params.id);
     if (!tracking) return res.status(404).json({ error: "Not found" });
-
     await runGuideDocsScrape(tracking);
     res.json({ message: `Guide docs scrape completed for "${tracking.name}"` });
   } catch (err) {
@@ -74,15 +87,10 @@ guideDocsRoutes.post("/scrape-all", async (req, res) => {
   try {
     const snap = await db.collection(COLLECTION).where("active", "==", true).get();
     const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
     for (const tracking of trackings) {
-      try {
-        await runGuideDocsScrape(tracking);
-      } catch (err) {
-        console.error(`[guide-docs] Failed to scrape "${tracking.name}":`, err.message);
-      }
+      try { await runGuideDocsScrape(tracking); }
+      catch (err) { console.error(`[guide-docs] Failed to scrape "${tracking.name}":`, err.message); }
     }
-
     res.json({ message: `${trackings.length} guide docs scrapes completed` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -91,8 +99,8 @@ guideDocsRoutes.post("/scrape-all", async (req, res) => {
 
 guideDocsRoutes.get("/dashboard", async (req, res) => {
   try {
-    const trackings = await getAllOrdered(COLLECTION, "asc");
-    const allSnapshots = await getAllSnapshots(COLLECTION);
+    const trackings = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
+    const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
     const WINDOW_MS = 5 * 60 * 1000;
     const sessions = [];
@@ -119,12 +127,7 @@ guideDocsRoutes.get("/dashboard", async (req, res) => {
           (diff.renamed && diff.renamed.length > 0) ||
           (diff.childrenChanged && diff.childrenChanged.length > 0)
         );
-
-        return {
-          trackingId: tracking.id,
-          name: tracking.name,
-          changes: hasChanges ? diff : [],
-        };
+        return { trackingId: tracking.id, name: tracking.name, changes: hasChanges ? diff : [] };
       });
 
       const createdAt = session.createdAt?.toDate ? session.createdAt.toDate().toISOString() : session.createdAt;
@@ -139,25 +142,12 @@ guideDocsRoutes.get("/dashboard", async (req, res) => {
 
 export async function runGuideDocsScrape(tracking) {
   console.log(`[guide-docs] Starting scrape for: ${tracking.name}`);
-
   const navData = await scrapeGuideDocs(tracking.url);
-
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-
-  const { diff, hasChanges } = computeGuideDocsDiff(
-    previous?.navData || null,
-    navData
-  );
-
+  const { diff, hasChanges } = computeGuideDocsDiff(previous?.navData || null, navData);
   await addSnapshot(COLLECTION, tracking.id, {
-    trackingId: tracking.id,
-    navData,
-    diff: hasChanges ? diff : null,
+    trackingId: tracking.id, navData, diff: hasChanges ? diff : null,
   });
-
-  if (hasChanges) {
-    console.log(`[guide-docs] Changes detected for "${tracking.name}"`);
-  }
-
+  if (hasChanges) console.log(`[guide-docs] Changes detected for "${tracking.name}"`);
   console.log(`[guide-docs] Completed scrape for "${tracking.name}" (${navData.length} items)`);
 }

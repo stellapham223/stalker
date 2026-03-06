@@ -1,18 +1,21 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrdered, getById, createDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
-  getAllSnapshots, serializeDocs, serializeDoc,
+  serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeKeywordRanking, computeRankingDiff } from "../scrapers/keywordScraper.js";
+import { requireAuth, checkOwnership } from "./middleware.js";
 
 const COLLECTION = "keywordTrackings";
 export const keywordRoutes = Router();
 
+keywordRoutes.use(requireAuth);
+
 keywordRoutes.get("/", async (req, res) => {
   try {
-    const items = await getAllOrdered(COLLECTION, "desc");
+    const items = await getAllOrderedByOwner(COLLECTION, req.userEmail, "desc");
     res.json(serializeDocs(items));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,6 +29,7 @@ keywordRoutes.post("/", async (req, res) => {
       keyword,
       searchUrl: searchUrl || `https://apps.shopify.com/search?q=${encodeURIComponent(keyword)}`,
       active: true,
+      ownerEmail: req.userEmail,
     });
     res.status(201).json(serializeDoc(item));
   } catch (err) {
@@ -35,6 +39,9 @@ keywordRoutes.post("/", async (req, res) => {
 
 keywordRoutes.delete("/:id", async (req, res) => {
   try {
+    const { allowed, notFound } = await checkOwnership(COLLECTION, req.params.id, req.userEmail);
+    if (notFound) return res.status(404).json({ error: "Not found" });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
     await deleteDocWithSnapshots(COLLECTION, req.params.id);
     res.status(204).end();
   } catch (err) {
@@ -65,7 +72,6 @@ keywordRoutes.get("/:id/snapshots/latest", async (req, res) => {
 keywordRoutes.get("/:id/changes", async (req, res) => {
   try {
     const { limit = "30" } = req.query;
-    // For keywords, "has changes" means newEntries/droppedEntries/positionChanges are not null
     const allSnaps = await getSnapshots(COLLECTION, req.params.id, parseInt(limit, 10) * 3);
     const changes = allSnaps
       .filter((s) => s.newEntries || s.droppedEntries || s.positionChanges)
@@ -79,8 +85,8 @@ keywordRoutes.get("/:id/changes", async (req, res) => {
 
 keywordRoutes.get("/dashboard", async (req, res) => {
   try {
-    const keywords = await getAllOrdered(COLLECTION, "asc");
-    const allSnapshots = await getAllSnapshots(COLLECTION);
+    const keywords = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
+    const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
     const WINDOW_MS = 5 * 60 * 1000;
     const sessions = [];
@@ -126,7 +132,6 @@ keywordRoutes.post("/:id/scrape", async (req, res) => {
   try {
     const keyword = await getById(COLLECTION, req.params.id);
     if (!keyword) return res.status(404).json({ error: "Not found" });
-
     await runKeywordScrape(keyword);
     res.json({ message: "Keyword ranking scrape completed" });
   } catch (err) {
@@ -138,15 +143,10 @@ keywordRoutes.post("/scrape-all", async (req, res) => {
   try {
     const snap = await db.collection(COLLECTION).where("active", "==", true).get();
     const keywords = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
     for (const keyword of keywords) {
-      try {
-        await runKeywordScrape(keyword);
-      } catch (err) {
-        console.error(`[keywords] Failed to scrape "${keyword.keyword}":`, err.message);
-      }
+      try { await runKeywordScrape(keyword); }
+      catch (err) { console.error(`[keywords] Failed to scrape "${keyword.keyword}":`, err.message); }
     }
-
     res.json({ message: `${keywords.length} keyword scrapes completed` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -155,27 +155,17 @@ keywordRoutes.post("/scrape-all", async (req, res) => {
 
 export async function runKeywordScrape(keyword) {
   console.log(`[keywords] Starting scrape for "${keyword.keyword}"`);
-
   const rankings = await scrapeKeywordRanking(keyword.searchUrl);
-
   const previous = await getLatestSnapshot(COLLECTION, keyword.id);
-
   const { newEntries, droppedEntries, positionChanges, hasChanges } = computeRankingDiff(
-    previous?.rankings || null,
-    rankings
+    previous?.rankings || null, rankings
   );
-
   await addSnapshot(COLLECTION, keyword.id, {
-    keywordId: keyword.id,
-    rankings,
+    keywordId: keyword.id, rankings,
     newEntries: hasChanges ? newEntries : null,
     droppedEntries: hasChanges ? droppedEntries : null,
     positionChanges: hasChanges ? positionChanges : null,
   });
-
-  if (hasChanges) {
-    console.log(`[keywords] Changes detected for "${keyword.keyword}"`);
-  }
-
+  if (hasChanges) console.log(`[keywords] Changes detected for "${keyword.keyword}"`);
   console.log(`[keywords] Completed scrape for "${keyword.keyword}" (${rankings.length} results)`);
 }

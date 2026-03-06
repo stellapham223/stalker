@@ -4,6 +4,9 @@
     "runtime": "nodejs20",
     "codebase": "default"
   },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  },
   "emulators": {
     "functions": {
       "host": "localhost",
