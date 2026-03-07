@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLatestChanges } from "@/lib/api";
 
 const STORAGE_PREFIX = "stalker_seen_";
@@ -15,6 +15,7 @@ function getSeenAt(featureKey, itemId) {
 }
 
 export function useChangesBadge() {
+  const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ["changes-latest"],
     queryFn: fetchLatestChanges,
@@ -61,6 +62,8 @@ export function useChangesBadge() {
   function markSeen(featureKey, itemId) {
     if (typeof window === "undefined") return;
     localStorage.setItem(getSeenKey(featureKey, itemId), new Date().toISOString());
+    // Touch the cache to force re-render in all consumers (e.g. sidebar badge)
+    queryClient.setQueryData(["changes-latest"], (old) => (old ? { ...old } : old));
   }
 
   return { getBadge, getFeatureBadge, markSeen, data };

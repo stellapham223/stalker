@@ -54,10 +54,22 @@ changesRoutes.get("/latest", async (req, res) => {
       if (Array.isArray(diff.childrenChanged)) count += diff.childrenChanged.length;
       // App listing diffs: {fieldName: {old, new}}
       if (count === 0) {
-        const fieldChanges = Object.values(diff).filter(
-          (v) => v && typeof v === "object" && "old" in v && "new" in v
+        const fieldChanges = Object.entries(diff).filter(
+          ([, v]) => v && typeof v === "object" && "old" in v && "new" in v
         );
-        count = fieldChanges.length;
+        for (const [, change] of fieldChanges) {
+          if (Array.isArray(change.old) && Array.isArray(change.new)) {
+            // For array fields (screenshots, etc.), count added + removed items
+            const oldSet = new Set(change.old.map((x) => JSON.stringify(x)));
+            const newSet = new Set(change.new.map((x) => JSON.stringify(x)));
+            let delta = 0;
+            for (const item of newSet) if (!oldSet.has(item)) delta++;
+            for (const item of oldSet) if (!newSet.has(item)) delta++;
+            count += delta || 1; // at least 1 if arrays differ
+          } else {
+            count += 1;
+          }
+        }
       }
       return count;
     }

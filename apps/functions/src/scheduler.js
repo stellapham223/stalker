@@ -226,10 +226,21 @@ async function sendNotification(scrapeStartTime) {
     if (Array.isArray(diff.reordered)) n += diff.reordered.length;
     if (Array.isArray(diff.childrenChanged)) n += diff.childrenChanged.length;
     if (n === 0) {
-      const fieldChanges = Object.values(diff).filter(
-        (v) => v && typeof v === "object" && "old" in v && "new" in v
+      const fieldChanges = Object.entries(diff).filter(
+        ([, v]) => v && typeof v === "object" && "old" in v && "new" in v
       );
-      n = fieldChanges.length;
+      for (const [, change] of fieldChanges) {
+        if (Array.isArray(change.old) && Array.isArray(change.new)) {
+          const oldSet = new Set(change.old.map((x) => JSON.stringify(x)));
+          const newSet = new Set(change.new.map((x) => JSON.stringify(x)));
+          let delta = 0;
+          for (const item of newSet) if (!oldSet.has(item)) delta++;
+          for (const item of oldSet) if (!newSet.has(item)) delta++;
+          n += delta || 1;
+        } else {
+          n += 1;
+        }
+      }
     }
     return n;
   }
