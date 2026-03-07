@@ -4,9 +4,19 @@ import Google from "next-auth/providers/google";
 const API_URL = process.env.NEXTAUTH_API_URL || "http://localhost:4000";
 
 async function createAuthToken(email) {
-  const crypto = await import("crypto");
   const secret = process.env.NEXTAUTH_SECRET || "";
-  return crypto.createHmac("sha256", secret).update(email).digest("hex");
+  const encoder = new TextEncoder();
+  const key = await globalThis.crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await globalThis.crypto.subtle.sign("HMAC", key, encoder.encode(email));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
