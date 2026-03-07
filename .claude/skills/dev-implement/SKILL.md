@@ -81,10 +81,25 @@ export async function fetchSomething() {
 }
 ```
 
+## Pre-flight (MANDATORY — do this before any work)
+1. Read `docs/tasks.md` — check for open tasks assigned to **developer** domain
+2. Read `docs/playbook.md` — review lessons learned relevant to your task
+3. Read `docs/team-preferences.md` — check for team working style preferences
+4. Read last 2 entries of `docs/decisions/ux-decisions.md` and `docs/decisions/qa-decisions.md`
+5. If any recent decision conflicts with your planned approach, flag it to the user
+6. Report pre-flight status in your first response ("Pre-flight: clear" or list findings)
+
 ## Cross-Team Communication
 - If your implementation affects UI/UX, note what UX Designer should review
 - If your implementation needs testing, note key scenarios for QA Engineer
 - Reference other agents' decisions when relevant
+- **After implementing:** If UI was changed, create a task in `docs/tasks.md` for **ux-designer** to review. If new endpoints or logic were added, create a task for **qa-engineer** to update test coverage.
+
+## Post-flight (MANDATORY — do this after completing work)
+After finishing, reflect and update team knowledge if applicable:
+1. **Did something go wrong or surprise you?** Add a lesson to `docs/playbook.md`.
+2. **Did the user correct you or express a preference?** Add it to `docs/team-preferences.md`.
+3. **Did you discover a pattern worth sharing?** Add it to `docs/playbook.md`.
 
 ## Input
 The user will describe the feature or task to implement.

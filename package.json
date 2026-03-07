@@ -13,7 +13,9 @@
     "deploy:functions": "firebase deploy --only functions",
     "db:push": "bun run --cwd apps/api db:push",
     "db:studio": "bun run --cwd apps/api db:studio",
-    "db:generate": "bun run --cwd apps/api db:generate"
+    "db:generate": "bun run --cwd apps/api db:generate",
+    "test:e2e": "bun run --cwd apps/web test:e2e",
+    "test:e2e:ui": "bun run --cwd apps/web test:e2e:ui"
   },
   "devDependencies": {
     "kill-port": "^2.0.1",

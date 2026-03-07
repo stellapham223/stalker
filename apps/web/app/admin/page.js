@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const isProd = process.env.NODE_ENV === "production";
 const API_BASE = isProd ? (process.env.NEXT_PUBLIC_API_URL || "") : "";
@@ -26,6 +28,7 @@ export default function AdminPage() {
   const [showCsv, setShowCsv] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const fileInputRef = useRef(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const authHeaders = session?.user?.email
     ? { "x-user-email": session.user.email }
@@ -124,7 +127,13 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
-  if (isLoading) return <p className="p-6">Loading...</p>;
+  if (isLoading) return (
+    <div className="space-y-6 max-w-6xl">
+      <Skeleton className="h-9 w-48" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
   if (error) return <p className="p-6 text-destructive">Error: {error.message}</p>;
 
   return (
@@ -265,9 +274,7 @@ export default function AdminPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         className="text-xs text-destructive hover:underline"
-                        onClick={() => {
-                          if (confirm(`Delete "${user.email}"?`)) deleteUser.mutate(user.id);
-                        }}
+                        onClick={() => setDeleteTarget(user)}
                       >
                         Delete
                       </button>
@@ -286,6 +293,17 @@ export default function AdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete "${deleteTarget?.email}"?`}
+        description="This will permanently remove this user and revoke their access."
+        onConfirm={() => {
+          deleteUser.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

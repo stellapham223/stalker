@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchRecentChanges, fetchCompetitors } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Inbox } from "lucide-react";
 
 export default function DashboardPage() {
   const { data: competitors = [] } = useQuery({
@@ -77,7 +78,13 @@ export default function DashboardPage() {
             </Card>
           ))}
           {changes.length === 0 && (
-            <p className="text-muted-foreground">No changes detected yet.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Inbox className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <h3 className="text-sm font-semibold">No changes detected yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Changes will appear here after you run scrapes on your tracked competitors.
+              </p>
+            </div>
           )}
         </div>
       </div>

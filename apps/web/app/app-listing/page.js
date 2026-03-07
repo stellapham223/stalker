@@ -11,6 +11,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TabButton } from "./_components/tab-button";
 import { DashboardTab } from "./_components/dashboard-tab";
 import { CompetitorDetail } from "./_components/competitor-detail";
@@ -23,6 +25,7 @@ export default function AppListingPage() {
   const [activeTab, setActiveTab] = useState(DASHBOARD_TAB);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: "", appUrl: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data: competitors = [], isLoading } = useQuery({
     queryKey: ["app-listing-competitors"],
@@ -59,7 +62,7 @@ export default function AppListingPage() {
     },
   });
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -132,11 +135,7 @@ export default function AppListingPage() {
             isActive={activeTab === c.id}
             onClick={() => { setActiveTab(c.id); markSeen("appListing", c.id); }}
             badge={getBadge("appListing", c.id)}
-            onDelete={() => {
-              if (confirm(`Delete "${c.name}"?`)) {
-                deleteMutation.mutate(c.id);
-              }
-            }}
+            onDelete={() => setDeleteTarget(c)}
           />
         ))}
       </div>
@@ -150,6 +149,17 @@ export default function AppListingPage() {
           competitorName={competitors.find((c) => c.id === activeTab)?.name}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="This will permanently remove this competitor and all its snapshots."
+        onConfirm={() => {
+          deleteMutation.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

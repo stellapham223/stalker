@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchKeywordSnapshots, triggerKeywordScrape } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FileSearch } from "lucide-react";
 
 export function KeywordDetail({ keywordId, keywordText }) {
   const queryClient = useQueryClient();
@@ -57,11 +59,19 @@ export function KeywordDetail({ keywordId, keywordText }) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p>Loading...</p>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
         ) : !latest ? (
-          <p className="text-muted-foreground">
-            No data yet. Click &quot;Scrape Now&quot; to fetch.
-          </p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <FileSearch className="h-10 w-10 text-muted-foreground/50 mb-3" />
+            <h3 className="text-sm font-semibold">No data yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Click &quot;Scrape Now&quot; to fetch keyword rankings.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

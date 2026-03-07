@@ -52,3 +52,49 @@ This file logs important UX/UI design decisions made by the UX Designer agent. O
 7. **Login page:** Replaced emoji with Lucide Radar icon, added gradient text title, glow animation.
 **Rationale:** Deep Ocean chosen over Cyber Violet and Matrix Emerald for best data readability, professional credibility, and natural diff color contrast. Space Grotesk provides technical character without sacrificing readability.
 **Affected files:** `apps/web/app/globals.css`, `apps/web/tailwind.config.js`, `apps/web/app/layout.js`, `apps/web/components/providers.js`, `apps/web/components/sidebar.js`, `apps/web/components/ui/card.js`, `apps/web/components/ui/button.js`, `apps/web/app/login/page.js`, all `_components/` files across feature pages, `docs/design-system.md`
+
+---
+
+## [2026-03-07] Full UX Review — All Pages Against Brand Guideline v1.0
+**Agent:** UX Designer
+**Decision:** Comprehensive UX review of all pages against the newly created brand guideline. Reviewed 30+ files across login, dashboard, 6 feature pages, admin, user guide, competitors, changes, and shared components.
+
+**Overall assessment:** The Deep Ocean visual identity is well-implemented. Design tokens are used correctly across ~98% of the codebase. Typography, layout patterns, and semantic HTML are consistent. The main gaps are in component states and interaction patterns.
+
+**Issues found (7 categories, ~40 instances):**
+
+1. **CRITICAL — Loading states still use plain text (12 files)**
+   All pages show `<p>Loading...</p>` instead of skeleton placeholders. This was flagged in the 2026-03-06 review but not yet fixed.
+   Files: All `page.js` files + `dashboard-tab.js` + detail components across all 6 features, plus admin, changes, competitors pages.
+
+2. **CRITICAL — Browser confirm() for destructive actions (8 files)**
+   All delete actions use native `confirm()` instead of a proper AlertDialog component. Affects every feature page + admin + competitors.
+
+3. **WARNING — Tab close buttons not semantic + missing aria-label (6 files)**
+   Delete "x" in tab-button.js uses `<span onClick>` instead of `<button>`, and has no `aria-label`. Affects all 6 feature tab-button components.
+
+4. **WARNING — Empty states incomplete (8+ files)**
+   Dashboard tabs and detail views show text-only empty states without the full icon + heading + description + CTA pattern.
+
+5. **WARNING — Hardcoded `text-white` in badge (6 files)**
+   Tab-button badge notification uses `text-white` instead of `text-destructive-foreground`. Minor but violates token rule.
+
+6. **SUGGESTION — Unauthorized page uses emoji instead of Lucide icon**
+   `unauthorized/page.js` uses emoji instead of Lucide icon, and doesn't use Button component.
+
+7. **SUGGESTION — Inconsistent date formatting**
+   Some files use `toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })`, others use bare `toLocaleString()`.
+
+**What's working well:**
+- Design tokens: ~98% compliance (only Google OAuth SVG colors are hardcoded, which is intentional)
+- Typography hierarchy: consistent text-3xl/text-sm/text-xs scale
+- Semantic HTML: proper table/button/form usage
+- Diff visualization: correct use of --diff-add/--diff-remove tokens
+- Table patterns: proper headers, hover states, overflow handling
+- Button labels: specific action verbs ("Add Competitor", "Scrape All", etc.)
+- Language: 100% English UI (mixed language issue from 2026-03-06 is resolved)
+- Sidebar: excellent accessibility, proper aria-labels, glass-morphism, consistent nav pattern
+- Login page: strong branded experience with gradient text, glow animation, clear error states
+
+**Affected files:** All page and component files across the app
+**Cross-refs:** See TASK-001 through TASK-004 in docs/tasks.md for developer handoff

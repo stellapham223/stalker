@@ -60,6 +60,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.email) {
         token.email = user.email.toLowerCase().trim();
       }
+      // Skip backend verification in test mode (token already has all data)
+      if (process.env.PLAYWRIGHT_TEST === "true") {
+        return token;
+      }
       // Always re-verify user exists and fetch fresh permissions
       if (token.email) {
         try {

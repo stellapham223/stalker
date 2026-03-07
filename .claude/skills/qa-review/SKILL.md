@@ -105,6 +105,20 @@ After all issues, provide:
 ```
 
 After the review, log significant findings to `docs/decisions/qa-decisions.md`.
+If findings require developer action (bugs, security issues), create a task in `docs/tasks.md` for **developer** with priority and specific files.
+
+## Pre-flight (MANDATORY — do this before any work)
+1. Read `docs/tasks.md` — check for open tasks assigned to **qa-engineer** domain
+2. Read `docs/playbook.md` — review lessons learned (check for known bug patterns)
+3. Read `docs/team-preferences.md` — check for team working style preferences
+4. Read last 2 entries of `docs/decisions/dev-decisions.md` and `docs/decisions/ux-decisions.md`
+5. If any recent decision conflicts with your planned approach, flag it to the user
+6. Report pre-flight status in your first response ("Pre-flight: clear" or list findings)
+
+## Post-flight (MANDATORY — do this after completing work)
+After a review, update team knowledge if applicable:
+1. **Did you find a systemic bug pattern?** Add it to `docs/playbook.md`.
+2. **Did the user disagree with a finding's severity?** Log to `docs/team-preferences.md`.
 
 ## Context
 - Backend API: `apps/functions/src/api/` (Express routes)

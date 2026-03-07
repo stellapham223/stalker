@@ -11,6 +11,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TabButton } from "./_components/tab-button";
 import { DashboardTab } from "./_components/dashboard-tab";
 import { HomepageDetail } from "./_components/homepage-detail";
@@ -23,6 +25,7 @@ export default function HomepageMonitorPage() {
   const [activeTab, setActiveTab] = useState(DASHBOARD_TAB);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: "", url: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data: trackings = [], isLoading } = useQuery({
     queryKey: ["homepage-trackings"],
@@ -59,7 +62,7 @@ export default function HomepageMonitorPage() {
     },
   });
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -132,11 +135,7 @@ export default function HomepageMonitorPage() {
             isActive={activeTab === t.id}
             onClick={() => { setActiveTab(t.id); markSeen("homepage", t.id); }}
             badge={getBadge("homepage", t.id)}
-            onDelete={() => {
-              if (confirm(`Delete "${t.name}"?`)) {
-                deleteMutation.mutate(t.id);
-              }
-            }}
+            onDelete={() => setDeleteTarget(t)}
           />
         ))}
       </div>
@@ -150,6 +149,17 @@ export default function HomepageMonitorPage() {
           tracking={trackings.find((t) => t.id === activeTab)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="This will permanently remove this homepage and all its snapshots."
+        onConfirm={() => {
+          deleteMutation.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

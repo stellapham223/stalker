@@ -2,6 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAutocompleteDashboard } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart3 } from "lucide-react";
 
 export function DashboardTab() {
   const { data: timeline = [], isLoading } = useQuery({
@@ -9,13 +11,22 @@ export function DashboardTab() {
     queryFn: fetchAutocompleteDashboard,
   });
 
-  if (isLoading) return <p>Loading dashboard...</p>;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
 
   if (timeline.length === 0) {
     return (
-      <p className="text-muted-foreground">
-        No scrape data yet. Run &quot;Scrape All&quot; to start collecting data.
-      </p>
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <BarChart3 className="h-10 w-10 text-muted-foreground/50 mb-3" />
+        <h3 className="text-sm font-semibold">No scrape data yet</h3>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          Click &quot;Scrape All&quot; above to start collecting autocomplete data.
+        </p>
+      </div>
     );
   }
 

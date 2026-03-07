@@ -130,6 +130,19 @@ For each test level, define cases with this structure:
 - What external service mocks are needed
 ```
 
+## Pre-flight (MANDATORY — do this before any work)
+1. Read `docs/tasks.md` — check for open tasks assigned to **qa-engineer** domain
+2. Read `docs/playbook.md` — review lessons learned relevant to test planning
+3. Read `docs/team-preferences.md` — check for team working style preferences
+4. Read last 2 entries of `docs/decisions/dev-decisions.md` and `docs/decisions/ux-decisions.md`
+5. If any recent decision conflicts with your planned approach, flag it to the user
+6. Report pre-flight status in your first response ("Pre-flight: clear" or list findings)
+
+## Post-flight (MANDATORY — do this after completing work)
+After creating a test plan, update team knowledge if applicable:
+1. **Did you discover a testing gap pattern?** Add it to `docs/playbook.md`.
+2. **Did the user adjust your test priorities?** Log to `docs/team-preferences.md`.
+
 ## Project-Specific Considerations
 - **No TypeScript:** Tests must be in JavaScript
 - **Firestore:** May need mocking strategy (no local emulator configured)

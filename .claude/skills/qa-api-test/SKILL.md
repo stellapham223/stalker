@@ -145,6 +145,19 @@ For each test, report:
 | * | /changes/* | Mutations only | Change feed |
 | * | /admin/* | Mutations only | Admin operations |
 
+## Pre-flight (MANDATORY — do this before any work)
+1. Read `docs/tasks.md` — check for open tasks assigned to **qa-engineer** domain
+2. Read `docs/playbook.md` — review lessons learned (especially security patterns)
+3. Read `docs/team-preferences.md` — check for team working style preferences
+4. Read last 2 entries of `docs/decisions/dev-decisions.md` and `docs/decisions/ux-decisions.md`
+5. If any recent decision conflicts with your planned approach, flag it to the user
+6. Report pre-flight status in your first response ("Pre-flight: clear" or list findings)
+
+## Post-flight (MANDATORY — do this after completing work)
+After testing, update team knowledge if applicable:
+1. **Did you find a new vulnerability pattern?** Add it to `docs/playbook.md`.
+2. **Did the user adjust testing scope or approach?** Log to `docs/team-preferences.md`.
+
 ## Your Autonomy
 **You CAN decide on your own:**
 - Which tests to run and in what order

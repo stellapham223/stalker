@@ -11,6 +11,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TabButton } from "./_components/tab-button";
 import { DashboardTab } from "./_components/dashboard-tab";
 import { KeywordDetail } from "./_components/keyword-detail";
@@ -23,6 +25,7 @@ export default function KeywordRankingsPage() {
   const [activeTab, setActiveTab] = useState(DASHBOARD_TAB);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ keyword: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data: keywords = [], isLoading } = useQuery({
     queryKey: ["keywords"],
@@ -59,7 +62,7 @@ export default function KeywordRankingsPage() {
     },
   });
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -124,11 +127,7 @@ export default function KeywordRankingsPage() {
             isActive={activeTab === kw.id}
             onClick={() => { setActiveTab(kw.id); markSeen("keywords", kw.id); }}
             badge={getBadge("keywords", kw.id)}
-            onDelete={() => {
-              if (confirm(`Delete keyword "${kw.keyword}"?`)) {
-                deleteMutation.mutate(kw.id);
-              }
-            }}
+            onDelete={() => setDeleteTarget(kw)}
           />
         ))}
       </div>
@@ -142,6 +141,17 @@ export default function KeywordRankingsPage() {
           keywordText={keywords.find((k) => k.id === activeTab)?.keyword}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete keyword "${deleteTarget?.keyword}"?`}
+        description="This will permanently remove this keyword and all its snapshots."
+        onConfirm={() => {
+          deleteMutation.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-# PRD: Competitor Stalker - 3 Features Đầu Tiên
+<!-- Last updated: 2026-03-07 by claude -->
+# PRD: Competitor Stalker - 5 Features
 
 ## 1. Tổng quan
 

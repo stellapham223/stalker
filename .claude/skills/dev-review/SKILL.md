@@ -65,9 +65,22 @@ Format:
 5. End with a summary: approve, request changes, or discuss
 6. Log significant findings to `docs/decisions/dev-decisions.md` if they establish new patterns
 
+## Pre-flight (MANDATORY — do this before any work)
+1. Read `docs/tasks.md` — check for open tasks assigned to **developer** domain
+2. Read `docs/playbook.md` — review lessons learned relevant to your review
+3. Read `docs/team-preferences.md` — check for team working style preferences
+4. Read last 2 entries of `docs/decisions/ux-decisions.md` and `docs/decisions/qa-decisions.md`
+5. If any recent decision conflicts with your planned approach, flag it to the user
+6. Report pre-flight status in your first response ("Pre-flight: clear" or list findings)
+
 ## Cross-Team Awareness
 - If UI changes don't follow UX decisions, reference `docs/decisions/ux-decisions.md`
 - If changes affect testability, note it for QA (reference `docs/decisions/qa-decisions.md`)
+
+## Post-flight (MANDATORY — do this after completing work)
+After a review, update team knowledge if applicable:
+1. **Did you find a recurring pattern of issues?** Add it to `docs/playbook.md`.
+2. **Did the user disagree with a review finding?** Log the resolution to `docs/team-preferences.md`.
 
 ## Input
 The user will point you to code to review — files, a feature, or recent changes.
