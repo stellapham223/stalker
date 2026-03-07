@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-
-const isProd = process.env.NODE_ENV === "production";
-const API_BASE = isProd ? (process.env.NEXT_PUBLIC_API_URL || "") : "";
+import { getAuthHeaders, fetchJSON, postJSON, deleteJSON } from "@/lib/api/client";
 
 const PAGE_KEYS = [
   { key: "appListing", label: "App Listing" },
@@ -30,37 +28,27 @@ export default function AdminPage() {
   const fileInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const authHeaders = session?.user?.email
-    ? { "x-user-email": session.user.email }
-    : {};
-
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: () =>
-      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users`, {
-        credentials: "include",
-        headers: authHeaders,
-      }).then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch users");
-        return r.json();
-      }),
+    queryFn: () => fetchJSON("/api/admin/users"),
     enabled: !!session?.user?.email,
   });
 
   const addUser = useMutation({
-    mutationFn: (email) =>
-      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users`, {
+    mutationFn: async (email) => {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
         body: JSON.stringify({ email }),
-      }).then(async (r) => {
-        if (!r.ok) {
-          const d = await r.json();
-          throw new Error(d.error || "Failed");
-        }
-        return r.json();
-      }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Failed");
+      }
+      return res.json();
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setEmailInput("");
@@ -68,34 +56,27 @@ export default function AdminPage() {
   });
 
   const updateUser = useMutation({
-    mutationFn: ({ id, updates }) =>
-      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/${id}`, {
+    mutationFn: async ({ id, updates }) => {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(`/api/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
         body: JSON.stringify(updates),
-      }).then((r) => r.json()),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
   const deleteUser = useMutation({
-    mutationFn: (id) =>
-      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: authHeaders,
-      }),
+    mutationFn: (id) => deleteJSON(`/api/admin/users/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
   const importUsers = useMutation({
-    mutationFn: (emails) =>
-      fetch(`${API_BASE}${isProd ? "" : "/api"}/admin/users/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders },
-        credentials: "include",
-        body: JSON.stringify({ emails }),
-      }).then((r) => r.json()),
+    mutationFn: (emails) => postJSON("/api/admin/users/import", { emails }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setImportResult(data);
