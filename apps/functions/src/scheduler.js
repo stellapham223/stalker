@@ -214,14 +214,24 @@ async function sendNotification(scrapeStartTime) {
   function countDiffChanges(diff) {
     if (!diff) return 0;
     let n = 0;
-    if (Array.isArray(diff.added)) n += diff.added.length;
-    if (Array.isArray(diff.removed)) n += diff.removed.length;
+    // Homepage diffs have both added[] and addedCount — prefer counts to avoid double-counting
+    if (typeof diff.addedCount === "number" || typeof diff.removedCount === "number") {
+      n += diff.addedCount ?? 0;
+      n += diff.removedCount ?? 0;
+    } else {
+      if (Array.isArray(diff.added)) n += diff.added.length;
+      if (Array.isArray(diff.removed)) n += diff.removed.length;
+    }
     if (Array.isArray(diff.renamed)) n += diff.renamed.length;
     if (Array.isArray(diff.reordered)) n += diff.reordered.length;
     if (Array.isArray(diff.childrenChanged)) n += diff.childrenChanged.length;
-    if (diff.addedCount) n += diff.addedCount;
-    if (diff.removedCount) n += diff.removedCount;
-    return n || Object.keys(diff).length;
+    if (n === 0) {
+      const fieldChanges = Object.values(diff).filter(
+        (v) => v && typeof v === "object" && "old" in v && "new" in v
+      );
+      n = fieldChanges.length;
+    }
+    return n;
   }
 
   const lines = [];

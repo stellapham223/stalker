@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
-import { getLatestSnapshot, serializeDoc } from "../db/helpers.js";
+import { serializeDoc } from "../db/helpers.js";
 
 export const changesRoutes = Router();
 
@@ -40,13 +40,19 @@ changesRoutes.get("/latest", async (req, res) => {
     function diffChangeCount(diff) {
       if (!diff) return 0;
       let count = 0;
-      if (Array.isArray(diff.added)) count += diff.added.length;
-      if (Array.isArray(diff.removed)) count += diff.removed.length;
+      // Homepage diffs have addedCount/removedCount as summary numbers
+      // alongside added/removed arrays — use counts to avoid double counting
+      if (typeof diff.addedCount === "number" || typeof diff.removedCount === "number") {
+        count += diff.addedCount ?? 0;
+        count += diff.removedCount ?? 0;
+      } else {
+        if (Array.isArray(diff.added)) count += diff.added.length;
+        if (Array.isArray(diff.removed)) count += diff.removed.length;
+      }
       if (Array.isArray(diff.renamed)) count += diff.renamed.length;
       if (Array.isArray(diff.reordered)) count += diff.reordered.length;
       if (Array.isArray(diff.childrenChanged)) count += diff.childrenChanged.length;
-      if (diff.addedCount) count += diff.addedCount;
-      if (diff.removedCount) count += diff.removedCount;
+      // App listing diffs: {fieldName: {old, new}}
       if (count === 0) {
         const fieldChanges = Object.values(diff).filter(
           (v) => v && typeof v === "object" && "old" in v && "new" in v
@@ -87,13 +93,24 @@ changesRoutes.get("/latest", async (req, res) => {
     }
 
     async function getLatestWithChanges(collection, id, isKeyword = false) {
-      const latest = await getLatestSnapshot(collection, id);
-      if (!latest) return null;
-      if (isKeyword) {
-        const hasChanges = latest.newEntries?.length || latest.droppedEntries?.length || latest.positionChanges?.length;
-        return hasChanges ? latest : null;
+      // Get recent snapshots and find the most recent one WITH changes
+      const snap = await db
+        .collection(collection)
+        .doc(id)
+        .collection("snapshots")
+        .orderBy("createdAt", "desc")
+        .limit(10)
+        .get();
+      if (snap.empty) return null;
+      for (const doc of snap.docs) {
+        const data = { id: doc.id, ...doc.data() };
+        if (isKeyword) {
+          if (data.newEntries?.length || data.droppedEntries?.length || data.positionChanges?.length) return data;
+        } else {
+          if (data.diff) return data;
+        }
       }
-      return latest.diff ? latest : null;
+      return null;
     }
 
     const keywordsResult = await Promise.all(

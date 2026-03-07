@@ -24,7 +24,7 @@ export function useChangesBadge() {
 
   /**
    * Returns change count for a specific item if not yet seen.
-   * featureKey: "keywords" | "autocomplete" | "appListing" | "websiteMenus" | "homepage" | "guideDocs"
+   * Compares per-item snapshotAt with user's seenAt timestamp.
    */
   function getBadge(featureKey, itemId) {
     if (!data?.features) return 0;
@@ -34,7 +34,7 @@ export function useChangesBadge() {
     if (!item || !item.hasChanges || item.changeCount === 0) return 0;
 
     const seenAt = getSeenAt(featureKey, itemId);
-    if (seenAt && data.sessionAt && seenAt >= data.sessionAt) return 0;
+    if (seenAt && item.snapshotAt && seenAt >= item.snapshotAt) return 0;
 
     return item.changeCount;
   }
@@ -49,18 +49,18 @@ export function useChangesBadge() {
     return items.reduce((sum, item) => {
       if (!item.hasChanges || item.changeCount === 0) return sum;
       const seenAt = getSeenAt(featureKey, item.id);
-      if (seenAt && data.sessionAt && seenAt >= data.sessionAt) return sum;
+      if (seenAt && item.snapshotAt && seenAt >= item.snapshotAt) return sum;
       return sum + item.changeCount;
     }, 0);
   }
 
   /**
    * Mark an item as seen — hides its badge.
+   * Stores current time so badge reappears only for newer changes.
    */
   function markSeen(featureKey, itemId) {
     if (typeof window === "undefined") return;
-    const sessionAt = data?.sessionAt || new Date().toISOString();
-    localStorage.setItem(getSeenKey(featureKey, itemId), sessionAt);
+    localStorage.setItem(getSeenKey(featureKey, itemId), new Date().toISOString());
   }
 
   return { getBadge, getFeatureBadge, markSeen, data };

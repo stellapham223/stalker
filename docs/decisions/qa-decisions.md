@@ -55,3 +55,23 @@ This file logs important QA and testing decisions made by the QA Engineer agent.
 **PRD update:** Feature 1 updated from Letsmetrix comparison to direct Shopify app listing scraping.
 **Overall risk:** High — auth issues are top priority.
 **Affected files:** `apps/functions/src/index.js`, `apps/functions/src/scheduler.js`, `apps/functions/src/api/middleware.js`, `apps/functions/src/db/helpers.js`, all scraper files, `PRD.md`
+
+---
+
+## [2026-03-07] Bug Fix — Badge/Changes Notification Logic
+**Agent:** QA Engineer
+**Decision:** Fixed three bugs in the badge (red dot) notification system affecting both count accuracy and show/hide logic.
+
+**Bug 1 — Homepage diff double-counting:**
+- `diffChangeCount` in both `changes.js` and `scheduler.js` counted `diff.added.length` AND `diff.addedCount` for homepage diffs (which have both fields), doubling the reported count.
+- **Fix:** If `addedCount`/`removedCount` exist (homepage pattern), use those; otherwise use array lengths. Fallback to `{old, new}` field-change counting for app listing diffs.
+
+**Bug 2 — Badge disappears when latest snapshot has no changes:**
+- `getLatestWithChanges` in `changes.js` only checked the single latest snapshot. If the most recent scrape found no changes, it returned null — hiding badges for unseen older changes.
+- **Fix:** Search last 10 snapshots to find the most recent one WITH changes (has `diff` or keyword change fields).
+
+**Bug 3 — Global `sessionAt` used for per-item seen comparison:**
+- `useChangesBadge.js` compared all items against a single global `sessionAt` (max timestamp). Marking one item as seen could inadvertently hide badges for other items with older timestamps.
+- **Fix:** Backend now returns per-item `snapshotAt`. Frontend compares each item's `snapshotAt` against its own localStorage `seenAt`. `markSeen` stores `new Date().toISOString()` instead of `data?.sessionAt`.
+
+**Affected files:** `apps/functions/src/api/changes.js`, `apps/functions/src/scheduler.js`, `apps/web/hooks/useChangesBadge.js`
