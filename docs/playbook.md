@@ -74,6 +74,10 @@ The current auth setup trusts the `x-user-email` header directly. This is a know
 Scrape endpoints are resource-intensive (Puppeteer + memory). They must have both authentication and rate limiting. `/scrape-all` was found publicly accessible.
 **Source:** qa-decisions.md 2026-03-07, scrape-all public access
 
+### LESSON: Never store `new Date()` in Firestore — always use `.toISOString()`
+Firestore converts JavaScript `Date` objects to Firestore Timestamps. If existing data uses ISO strings, mixing types breaks `orderBy` queries — Timestamps and strings sort in separate groups, making new documents invisible. Always use `new Date().toISOString()` for consistency. This caused 3 days of "scrape works but data disappears" debugging.
+**Source:** Firestore type mismatch bug, 2026-03-08, addSnapshot/createDoc/updateDoc fix in helpers.js
+
 ### LESSON: Always close Puppeteer browsers in finally blocks
 Launch browser inside try block, close in finally. If browser is launched before try/finally, a failure in page setup leaks the browser process.
 **Source:** qa-decisions.md 2026-03-07, browser cleanup warning

@@ -37,12 +37,17 @@ export default function AdminPage() {
   const addUser = useMutation({
     mutationFn: async (email) => {
       const authHeaders = await getAuthHeaders();
+      if (!authHeaders["x-auth-token"]) throw new Error("Session expired — please refresh the page");
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
         body: JSON.stringify({ email }),
       });
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Server error (${res.status}) — backend may not be running`);
+      }
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.error || "Failed");
