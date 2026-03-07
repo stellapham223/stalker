@@ -98,7 +98,7 @@ export const scheduledScrape = onSchedule(
     schedule: "0 23 * * *",
     timeZone: "UTC",
     region: "asia-southeast1",
-    memory: "2GiB",
+    memory: "4GiB",
     timeoutSeconds: 540,
     secrets: [telegramBotToken, telegramChatId],
   },

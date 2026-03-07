@@ -53,7 +53,7 @@ competitorRoutes.post("/", async (req, res) => {
         await db.collection(COLLECTION).doc(competitor.id).collection("trackedFields").doc(tfId).set({
           name: tf.name,
           selector: tf.selector,
-          createdAt: new Date(),
+          createdAt: new Date().toISOString(),
         });
       }
     }

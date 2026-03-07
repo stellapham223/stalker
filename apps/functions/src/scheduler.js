@@ -1,5 +1,5 @@
 import { db } from "./db/firestore.js";
-import { getLatestSnapshot, addSnapshot, getRecentSnapshotsWithDiff } from "./db/helpers.js";
+import { getLatestSnapshot, getLatestSnapshotWithDiff, getRecentDiffs, addSnapshot, getRecentSnapshotsWithDiff, isDuplicateDiff, isNoisyFieldDiff } from "./db/helpers.js";
 
 import { scrapeCompetitor } from "./scrapers/competitorScraper.js";
 import { computeDiff } from "./scrapers/differ.js";
@@ -12,16 +12,48 @@ import { scrapeGuideDocs, computeGuideDocsDiff } from "./scrapers/guideDocsScrap
 import { sendTelegramMessage } from "./scrapers/telegram.js";
 
 /**
- * Run all scrapers sequentially, then send Telegram notification.
- * Replaces pg-boss job queue + cron schedule.
+ * Run all scrapers in parallel, then send Telegram notification.
+ * Each scraper type runs concurrently via Promise.allSettled to stay within
+ * the Firebase Function timeout (540s). Items within each type still run
+ * sequentially to avoid overwhelming a single target site.
  */
 export async function runScrapeAll() {
   const scrapeStartTime = new Date();
-  let totalJobs = 0;
 
-  // 1. Competitor scraping
-  const competitorsSnap = await db.collection("competitors").where("active", "==", true).get();
-  for (const doc of competitorsSnap.docs) {
+  const scraperTasks = [
+    { name: "competitors", fn: scrapeAllCompetitors },
+    { name: "keywords", fn: scrapeAllKeywords },
+    { name: "autocomplete", fn: scrapeAllAutocomplete },
+    { name: "app-listing", fn: scrapeAllAppListing },
+    { name: "website-menus", fn: scrapeAllWebsiteMenus },
+    { name: "homepage", fn: scrapeAllHomepage },
+    { name: "guide-docs", fn: scrapeAllGuideDocs },
+  ];
+
+  console.log(`[scheduler] Starting ${scraperTasks.length} scraper types in parallel...`);
+  const results = await Promise.allSettled(scraperTasks.map((t) => t.fn()));
+
+  let totalJobs = 0;
+  for (let i = 0; i < results.length; i++) {
+    const { name } = scraperTasks[i];
+    const result = results[i];
+    if (result.status === "fulfilled") {
+      console.log(`[scheduler] ✓ ${name}: ${result.value} jobs`);
+      totalJobs += result.value;
+    } else {
+      console.error(`[scheduler] ✗ ${name}: FAILED —`, result.reason?.message || result.reason);
+    }
+  }
+
+  console.log(`[scheduler] Completed ${totalJobs} scrape jobs`);
+
+  await sendNotification(scrapeStartTime);
+}
+
+async function scrapeAllCompetitors() {
+  let jobs = 0;
+  const snap = await db.collection("competitors").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const competitor = { id: doc.id, ...doc.data() };
     try {
       const tfSnap = await doc.ref.collection("trackedFields").get();
@@ -38,10 +70,26 @@ export async function runScrapeAll() {
           .get();
         const prevSnap = allSnaps.empty ? null : allSnaps.docs[0].data();
 
-        const { diff, diffSummary, hasChanges } = computeDiff(
+        let { diff, diffSummary, hasChanges } = computeDiff(
           prevSnap?.content || null,
           result.content
         );
+
+        if (hasChanges) {
+          // Find last snapshot with non-null diff for this field to avoid null-diff cycle
+          const diffSnaps = await doc.ref
+            .collection("snapshots")
+            .where("fieldName", "==", result.fieldName)
+            .orderBy("createdAt", "desc")
+            .limit(5)
+            .get();
+          const lastWithDiff = diffSnaps.docs.map(d => d.data()).find(s => s.diff != null);
+          if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+            hasChanges = false;
+            diff = null;
+            diffSummary = null;
+          }
+        }
 
         await addSnapshot("competitors", competitor.id, {
           competitorId: competitor.id,
@@ -51,23 +99,43 @@ export async function runScrapeAll() {
           diffSummary: hasChanges ? diffSummary : null,
         });
       }
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[scrape] Failed for ${competitor.name}:`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 2. Keyword scraping
-  const keywordsSnap = await db.collection("keywordTrackings").where("active", "==", true).get();
-  for (const doc of keywordsSnap.docs) {
+async function scrapeAllKeywords() {
+  let jobs = 0;
+  const snap = await db.collection("keywordTrackings").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const keyword = { id: doc.id, ...doc.data() };
     try {
       const rankings = await scrapeKeywordRanking(keyword.searchUrl);
       const previous = await getLatestSnapshot("keywordTrackings", keyword.id);
-      const { newEntries, droppedEntries, positionChanges, hasChanges } = computeRankingDiff(
+      let { newEntries, droppedEntries, positionChanges, hasChanges } = computeRankingDiff(
         previous?.rankings || null,
         rankings
       );
+
+      if (hasChanges) {
+        // Keywords store diff in top-level fields, not in `diff` — find last snapshot with changes manually
+        const kwSnaps = await db.collection("keywordTrackings").doc(keyword.id)
+          .collection("snapshots").orderBy("createdAt", "desc").limit(10).get();
+        const lastKwWithDiff = kwSnaps.docs.map(d => d.data()).find(s => s.newEntries != null || s.droppedEntries != null || s.positionChanges != null);
+        if (lastKwWithDiff && isDuplicateDiff(
+          { n: lastKwWithDiff.newEntries, d: lastKwWithDiff.droppedEntries, p: lastKwWithDiff.positionChanges },
+          { n: newEntries, d: droppedEntries, p: positionChanges }
+        )) {
+          hasChanges = false;
+          newEntries = null;
+          droppedEntries = null;
+          positionChanges = null;
+        }
+      }
+
       await addSnapshot("keywordTrackings", keyword.id, {
         keywordId: keyword.id,
         rankings,
@@ -75,23 +143,35 @@ export async function runScrapeAll() {
         droppedEntries: hasChanges ? droppedEntries : null,
         positionChanges: hasChanges ? positionChanges : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[keywords] Failed for "${keyword.keyword}":`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 3. Autocomplete scraping
-  const autocompleteSnap = await db.collection("autocompleteTrackings").where("active", "==", true).get();
-  for (const doc of autocompleteSnap.docs) {
+async function scrapeAllAutocomplete() {
+  let jobs = 0;
+  const snap = await db.collection("autocompleteTrackings").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const tracking = { id: doc.id, ...doc.data() };
     try {
       const { suggestions, appSuggestions, rawResponse } = await scrapeAutocomplete(tracking.query);
       const previous = await getLatestSnapshot("autocompleteTrackings", tracking.id);
-      const { diff, hasChanges } = computeAutocompleteDiff(
+      let { diff, hasChanges } = computeAutocompleteDiff(
         previous?.suggestions || null,
         suggestions
       );
+
+      if (hasChanges) {
+        const lastWithDiff = await getLatestSnapshotWithDiff("autocompleteTrackings", tracking.id);
+        if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+          hasChanges = false;
+          diff = null;
+        }
+      }
+
       await addSnapshot("autocompleteTrackings", tracking.id, {
         trackingId: tracking.id,
         suggestions,
@@ -99,67 +179,103 @@ export async function runScrapeAll() {
         rawResponse,
         diff: hasChanges ? diff : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[autocomplete] Failed for "${tracking.query}":`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 4. App Listing scraping
-  const appListingSnap = await db.collection("appListingCompetitors").where("active", "==", true).get();
-  for (const doc of appListingSnap.docs) {
+async function scrapeAllAppListing() {
+  let jobs = 0;
+  const snap = await db.collection("appListingCompetitors").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const competitor = { id: doc.id, ...doc.data() };
     try {
       const data = await scrapeAppListing(competitor.appUrl);
       const previous = await getLatestSnapshot("appListingCompetitors", competitor.id);
-      const { diff, hasChanges } = computeAppListingDiff(
+      let { diff, hasChanges } = computeAppListingDiff(
         previous?.data || null,
         data
       );
+
+      if (hasChanges) {
+        const recentDiffs = await getRecentDiffs("appListingCompetitors", competitor.id);
+        if (isNoisyFieldDiff(recentDiffs, diff)) {
+          hasChanges = false;
+          diff = null;
+        }
+      }
+
       await addSnapshot("appListingCompetitors", competitor.id, {
         competitorId: competitor.id,
         data,
         diff: hasChanges ? diff : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[app-listing] Failed for "${competitor.name}":`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 5. Website Menu scraping
-  const menuSnap = await db.collection("websiteMenuTrackings").where("active", "==", true).get();
-  for (const doc of menuSnap.docs) {
+async function scrapeAllWebsiteMenus() {
+  let jobs = 0;
+  const snap = await db.collection("websiteMenuTrackings").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const tracking = { id: doc.id, ...doc.data() };
     try {
       const menuData = await scrapeWebsiteMenu(tracking.url, tracking.interactionType);
       const previous = await getLatestSnapshot("websiteMenuTrackings", tracking.id);
-      const { diff, hasChanges } = computeMenuDiff(
+      let { diff, hasChanges } = computeMenuDiff(
         previous?.menuData || null,
         menuData
       );
+
+      if (hasChanges) {
+        const lastWithDiff = await getLatestSnapshotWithDiff("websiteMenuTrackings", tracking.id);
+        if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+          hasChanges = false;
+          diff = null;
+        }
+      }
+
       await addSnapshot("websiteMenuTrackings", tracking.id, {
         trackingId: tracking.id,
         menuData,
         diff: hasChanges ? diff : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[website-menus] Failed for "${tracking.name}":`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 6. Homepage scraping
-  const homepageSnap = await db.collection("homepageTrackings").where("active", "==", true).get();
-  for (const doc of homepageSnap.docs) {
+async function scrapeAllHomepage() {
+  let jobs = 0;
+  const snap = await db.collection("homepageTrackings").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const tracking = { id: doc.id, ...doc.data() };
     try {
       const { sections, stats, testimonials, fullText } = await scrapeHomepageContent(tracking.url);
       const previous = await getLatestSnapshot("homepageTrackings", tracking.id);
-      const { diff, hasChanges } = computeHomepageDiff(
+      let { diff, hasChanges } = computeHomepageDiff(
         previous?.fullText || null,
         fullText
       );
+
+      if (hasChanges) {
+        const lastWithDiff = await getLatestSnapshotWithDiff("homepageTrackings", tracking.id);
+        if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+          hasChanges = false;
+          diff = null;
+        }
+      }
+
       await addSnapshot("homepageTrackings", tracking.id, {
         trackingId: tracking.id,
         sections,
@@ -168,38 +284,46 @@ export async function runScrapeAll() {
         fullText,
         diff: hasChanges ? diff : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[homepage] Failed for "${tracking.name}":`, err.message);
     }
   }
+  return jobs;
+}
 
-  // 7. Guide Docs scraping
-  const guideDocsSnap = await db.collection("guideDocsTrackings").where("active", "==", true).get();
-  for (const doc of guideDocsSnap.docs) {
+async function scrapeAllGuideDocs() {
+  let jobs = 0;
+  const snap = await db.collection("guideDocsTrackings").where("active", "==", true).get();
+  for (const doc of snap.docs) {
     const tracking = { id: doc.id, ...doc.data() };
     try {
       const navData = await scrapeGuideDocs(tracking.url);
       const previous = await getLatestSnapshot("guideDocsTrackings", tracking.id);
-      const { diff, hasChanges } = computeGuideDocsDiff(
+      let { diff, hasChanges } = computeGuideDocsDiff(
         previous?.navData || null,
         navData
       );
+
+      if (hasChanges) {
+        const lastWithDiff = await getLatestSnapshotWithDiff("guideDocsTrackings", tracking.id);
+        if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+          hasChanges = false;
+          diff = null;
+        }
+      }
+
       await addSnapshot("guideDocsTrackings", tracking.id, {
         trackingId: tracking.id,
         navData,
         diff: hasChanges ? diff : null,
       });
-      totalJobs++;
+      jobs++;
     } catch (err) {
       console.error(`[guide-docs] Failed for "${tracking.name}":`, err.message);
     }
   }
-
-  console.log(`[scheduler] Completed ${totalJobs} scrape jobs`);
-
-  // 8. Send Telegram notification
-  await sendNotification(scrapeStartTime);
+  return jobs;
 }
 
 async function sendNotification(scrapeStartTime) {

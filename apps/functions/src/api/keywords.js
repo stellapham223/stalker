@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
   getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
-  addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
+  addSnapshot, getSnapshots, getLatestSnapshot, getLatestSnapshotWithDiff, getSnapshotsWithChanges, isDuplicateDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeKeywordRanking, computeRankingDiff } from "../scrapers/keywordScraper.js";
@@ -141,7 +141,7 @@ keywordRoutes.post("/:id/scrape", async (req, res) => {
 
 keywordRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
     const keywords = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     for (const keyword of keywords) {
       try { await runKeywordScrape(keyword); }
@@ -157,9 +157,24 @@ export async function runKeywordScrape(keyword) {
   console.log(`[keywords] Starting scrape for "${keyword.keyword}"`);
   const rankings = await scrapeKeywordRanking(keyword.searchUrl);
   const previous = await getLatestSnapshot(COLLECTION, keyword.id);
-  const { newEntries, droppedEntries, positionChanges, hasChanges } = computeRankingDiff(
+  let { newEntries, droppedEntries, positionChanges, hasChanges } = computeRankingDiff(
     previous?.rankings || null, rankings
   );
+  if (hasChanges) {
+    // Keywords store diff in top-level fields, not `diff` — find last snapshot with changes manually
+    const kwSnaps = await db.collection(COLLECTION).doc(keyword.id)
+      .collection("snapshots").orderBy("createdAt", "desc").limit(10).get();
+    const lastKwWithDiff = kwSnaps.docs.map(d => d.data()).find(s => s.newEntries != null || s.droppedEntries != null || s.positionChanges != null);
+    if (lastKwWithDiff && isDuplicateDiff(
+      { n: lastKwWithDiff.newEntries, d: lastKwWithDiff.droppedEntries, p: lastKwWithDiff.positionChanges },
+      { n: newEntries, d: droppedEntries, p: positionChanges }
+    )) {
+      hasChanges = false;
+      newEntries = null;
+      droppedEntries = null;
+      positionChanges = null;
+    }
+  }
   await addSnapshot(COLLECTION, keyword.id, {
     keywordId: keyword.id, rankings,
     newEntries: hasChanges ? newEntries : null,

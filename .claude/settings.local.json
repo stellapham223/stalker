@@ -29,7 +29,11 @@
       "Bash(DATABASE_URL=\"postgresql://stalker:stalker_pass@localhost:5435/competitor_stalker\" bunx prisma migrate dev:*)",
       "Bash(where:*)",
       "Bash(PLAYWRIGHT_TEST=true bunx playwright test e2e/tests/dashboard -g \"empty\" --reporter=list)",
-      "Bash(PLAYWRIGHT_TEST=true bunx playwright test --reporter=list)"
+      "Bash(PLAYWRIGHT_TEST=true bunx playwright test --reporter=list)",
+      "Bash(PLAYWRIGHT_TEST=true bunx playwright test e2e/tests/scrape-all/scrape-all-tabs.spec.js -g \"Autocomplete Tracker.*Scrape All triggers correct API\" --reporter=list)",
+      "Bash(PLAYWRIGHT_TEST=true bunx playwright test e2e/tests/scrape-all/scrape-all-tabs.spec.js --reporter=list)",
+      "Bash(PLAYWRIGHT_TEST=true bunx playwright test e2e/tests/scrape-all/scrape-all-tabs.spec.js --reporter=line)",
+      "Bash(lsof -i :5001)"
     ]
   }
 }

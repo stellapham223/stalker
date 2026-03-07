@@ -22,16 +22,19 @@ export function TabButton({ tracking, isActive, onClick, onDelete, badge }) {
         </span>
       )}
       {hovered && (
-        <button
+        <span
+          role="button"
+          tabIndex={0}
           aria-label="Remove tab"
           className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onDelete(); } }}
         >
           x
-        </button>
+        </span>
       )}
     </button>
   );

@@ -12,18 +12,18 @@ export function HomepageDetail({ trackingId, tracking }) {
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["homepage-snapshots", trackingId],
     queryFn: () => fetchHomepageSnapshots(trackingId, 2),
+    staleTime: 0,
   });
 
   const scrapeMutation = useMutation({
     mutationFn: triggerHomepageScrape,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["homepage-snapshots", trackingId] });
-        queryClient.invalidateQueries({ queryKey: ["homepage-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["homepage-snapshots", trackingId] });
+      queryClient.invalidateQueries({ queryKey: ["homepage-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[HomepageScrapeNow] Error:", error);
     },
   });
 

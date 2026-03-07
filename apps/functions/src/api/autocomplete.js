@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
   getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
-  addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
+  addSnapshot, getSnapshots, getLatestSnapshot, getLatestSnapshotWithDiff, getSnapshotsWithChanges, isDuplicateDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeAutocomplete, computeAutocompleteDiff } from "../scrapers/autocompleteScraper.js";
@@ -123,7 +123,7 @@ autocompleteRoutes.get("/dashboard", async (req, res) => {
 
 autocompleteRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
     const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     for (const tracking of trackings) {
       try { await runAutocompleteScrape(tracking); }
@@ -150,7 +150,14 @@ export async function runAutocompleteScrape(tracking) {
   console.log(`[autocomplete] Starting scrape for "${tracking.query}"`);
   const { suggestions, appSuggestions, rawResponse } = await scrapeAutocomplete(tracking.query);
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-  const { diff, hasChanges } = computeAutocompleteDiff(previous?.suggestions || null, suggestions);
+  let { diff, hasChanges } = computeAutocompleteDiff(previous?.suggestions || null, suggestions);
+  if (hasChanges) {
+    const lastWithDiff = await getLatestSnapshotWithDiff(COLLECTION, tracking.id);
+    if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+      hasChanges = false;
+      diff = null;
+    }
+  }
   await addSnapshot(COLLECTION, tracking.id, {
     trackingId: tracking.id, suggestions, appSuggestions, rawResponse,
     diff: hasChanges ? diff : null,

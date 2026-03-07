@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
   getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
-  addSnapshot, getSnapshots, getLatestSnapshot, getSnapshotsWithChanges,
+  addSnapshot, getSnapshots, getLatestSnapshot, getLatestSnapshotWithDiff, getSnapshotsWithChanges, isDuplicateDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeHomepageContent, computeHomepageDiff } from "../scrapers/homepageScraper.js";
@@ -127,7 +127,7 @@ homepageRoutes.post("/:id/scrape", async (req, res) => {
 
 homepageRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
     const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     for (const tracking of trackings) {
       try { await runHomepageScrape(tracking); }
@@ -143,7 +143,14 @@ export async function runHomepageScrape(tracking) {
   console.log(`[homepage] Starting scrape for: ${tracking.name}`);
   const { sections, stats, testimonials, fullText } = await scrapeHomepageContent(tracking.url);
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-  const { diff, hasChanges } = computeHomepageDiff(previous?.fullText || null, fullText);
+  let { diff, hasChanges } = computeHomepageDiff(previous?.fullText || null, fullText);
+  if (hasChanges) {
+    const lastWithDiff = await getLatestSnapshotWithDiff(COLLECTION, tracking.id);
+    if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+      hasChanges = false;
+      diff = null;
+    }
+  }
   await addSnapshot(COLLECTION, tracking.id, {
     trackingId: tracking.id, sections, stats, testimonials, fullText,
     diff: hasChanges ? diff : null,

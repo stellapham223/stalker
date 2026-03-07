@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -22,6 +23,8 @@ export function Sidebar({ session }) {
   const pathname = usePathname();
   const { getFeatureBadge } = useChangesBadge();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const { data: freshInfo } = useQuery({
     queryKey: ["me-permissions"],
@@ -117,7 +120,7 @@ export function Sidebar({ session }) {
             className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
         </div>
       </div>

@@ -12,18 +12,18 @@ export function QueryDetail({ trackingId, queryText }) {
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["autocomplete-snapshots", trackingId],
     queryFn: () => fetchAutocompleteSnapshots(trackingId),
+    staleTime: 0,
   });
 
   const scrapeMutation = useMutation({
     mutationFn: triggerAutocompleteScrape,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["autocomplete-snapshots", trackingId] });
-        queryClient.invalidateQueries({ queryKey: ["autocomplete-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["autocomplete-snapshots", trackingId] });
+      queryClient.invalidateQueries({ queryKey: ["autocomplete-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[AutocompleteScrapeNow] Error:", error);
     },
   });
 

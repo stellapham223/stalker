@@ -102,7 +102,7 @@ export async function getById(collection, id) {
  */
 export async function createDoc(collection, data) {
   const id = uuid();
-  const now = new Date();
+  const now = new Date().toISOString();
   const docData = { ...data, createdAt: now, updatedAt: now };
   await db.collection(collection).doc(id).set(docData);
   return { id, ...docData };
@@ -115,7 +115,7 @@ export async function updateDoc(collection, id, data) {
   await db
     .collection(collection)
     .doc(id)
-    .update({ ...data, updatedAt: new Date() });
+    .update({ ...data, updatedAt: new Date().toISOString() });
   return getById(collection, id);
 }
 
@@ -143,7 +143,7 @@ export async function deleteDocWithSnapshots(collection, id) {
  */
 export async function addSnapshot(collection, parentId, snapshotData) {
   const id = uuid();
-  const now = new Date();
+  const now = new Date().toISOString();
   const data = { ...snapshotData, createdAt: now };
   await db
     .collection(collection)
@@ -182,6 +182,45 @@ export async function getLatestSnapshot(collection, parentId) {
   if (snap.empty) return null;
   const doc = snap.docs[0];
   return { id: doc.id, ...doc.data() };
+}
+
+/**
+ * Get the most recent snapshot that had a non-null diff.
+ * Used by isDuplicateDiff guard to avoid the null-diff cycle problem.
+ */
+export async function getLatestSnapshotWithDiff(collection, parentId) {
+  const snap = await db
+    .collection(collection)
+    .doc(parentId)
+    .collection("snapshots")
+    .orderBy("createdAt", "desc")
+    .limit(10)
+    .get();
+  if (snap.empty) return null;
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    if (data.diff != null) return { id: doc.id, ...data };
+  }
+  return null;
+}
+
+/**
+ * Get recent diffs (non-null) from snapshots.
+ * Used by isNoisyFieldDiff to collect noisy field keys across multiple scrapes.
+ */
+export async function getRecentDiffs(collection, parentId, count = 5) {
+  const snap = await db
+    .collection(collection)
+    .doc(parentId)
+    .collection("snapshots")
+    .orderBy("createdAt", "desc")
+    .limit(count * 3)
+    .get();
+  if (snap.empty) return [];
+  return snap.docs
+    .map((d) => d.data().diff)
+    .filter((d) => d != null)
+    .slice(0, count);
 }
 
 /**
@@ -269,4 +308,52 @@ export function serializeDoc(doc) {
 
 export function serializeDocs(docs) {
   return docs.map(serializeDoc);
+}
+
+/**
+ * Check if a newly computed diff is identical to the previous snapshot's diff.
+ * Guards against non-deterministic scraper output (dynamic counters, rotating
+ * carousels, load-timing artifacts) that cause false-positive change detection.
+ *
+ * Handles two diff formats:
+ * 1. Array-based: {added: [...], removed: [...]} — exact JSON match
+ * 2. Field-based: {fieldName: {old, new}} (App Listing) — compare field keys only,
+ *    because old/new values shift each scrape even when nothing really changed
+ */
+export function isDuplicateDiff(previousDiff, newDiff) {
+  if (!newDiff || !previousDiff) return false;
+
+  // Exact match covers most scraper types (menu, autocomplete, homepage, etc.)
+  if (JSON.stringify(previousDiff) === JSON.stringify(newDiff)) return true;
+
+  return false;
+}
+
+/**
+ * For field-based diffs (App Listing: {fieldName: {old, new}}), check if ALL keys
+ * in the new diff have appeared in ANY recent diffs. This catches rotating noisy fields
+ * (e.g., scrape 1 changes "subtitle", scrape 2 changes "screenshots", scrape 3 changes "subtitle" again).
+ */
+export function isNoisyFieldDiff(recentDiffs, newDiff) {
+  if (!newDiff || !recentDiffs || recentDiffs.length === 0) return false;
+
+  const isFieldDiff = (obj) =>
+    typeof obj === "object" &&
+    obj !== null &&
+    Object.keys(obj).length > 0 &&
+    Object.values(obj).every((v) => v && typeof v === "object" && "old" in v && "new" in v);
+
+  if (!isFieldDiff(newDiff)) return false;
+
+  // Collect all field keys that have appeared in recent diffs
+  const noisyKeys = new Set();
+  for (const d of recentDiffs) {
+    if (d && isFieldDiff(d)) {
+      for (const key of Object.keys(d)) noisyKeys.add(key);
+    }
+  }
+
+  // If ALL keys in the new diff are known noisy keys, suppress it
+  const newKeys = Object.keys(newDiff);
+  return newKeys.length > 0 && newKeys.every((k) => noisyKeys.has(k));
 }

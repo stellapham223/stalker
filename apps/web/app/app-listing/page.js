@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useChangesBadge } from "@/hooks/useChangesBadge";
 import {
@@ -10,6 +10,7 @@ import {
   triggerAppListingScrapeAll,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Check, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -26,6 +27,13 @@ export default function AppListingPage() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: "", appUrl: "" });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [scrapeAllStatus, setScrapeAllStatus] = useState(null);
+
+  useEffect(() => {
+    if (!scrapeAllStatus) return;
+    const timer = setTimeout(() => setScrapeAllStatus(null), 3000);
+    return () => clearTimeout(timer);
+  }, [scrapeAllStatus]);
 
   const { data: competitors = [], isLoading } = useQuery({
     queryKey: ["app-listing-competitors"],
@@ -52,13 +60,14 @@ export default function AppListingPage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerAppListingScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["app-listing-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["app-listing-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["app-listing-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["app-listing-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+      setScrapeAllStatus("success");
+    },
+    onError: (error) => {
+      console.error("[ScrapeAll] Error:", error);
+      setScrapeAllStatus("error");
     },
   });
 
@@ -74,7 +83,15 @@ export default function AppListingPage() {
             onClick={() => scrapeAllMutation.mutate()}
             disabled={scrapeAllMutation.isPending}
           >
-            {scrapeAllMutation.isPending ? "Scraping..." : "Scrape All"}
+            {scrapeAllMutation.isPending ? (
+              "Scraping..."
+            ) : scrapeAllStatus === "success" ? (
+              <><Check className="h-4 w-4 mr-1" /> Done</>
+            ) : scrapeAllStatus === "error" ? (
+              <><AlertCircle className="h-4 w-4 mr-1" /> Failed</>
+            ) : (
+              "Scrape All"
+            )}
           </Button>
           <Button onClick={() => setShowForm(!showForm)}>
             {showForm ? "Cancel" : "Add Competitor"}

@@ -52,13 +52,12 @@ export default function HomepageMonitorPage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerHomepageScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["homepage-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["homepage-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["homepage-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["homepage-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[HomepageScrapeAll] Error:", error);
     },
   });
 

@@ -18,6 +18,10 @@ This file captures lessons learned from real experience working on this project.
 
 ## Code Quality
 
+### LESSON: Guard against non-deterministic scraper output
+Puppeteer-based scrapers produce different content on each page load (dynamic counters, rotating carousels, load-timing variations). Before saving a diff, compare it against the previous snapshot's diff — if identical, treat it as no change. This prevents false-positive change notifications.
+**Source:** qa-decisions.md 2026-03-07, duplicate changes bug
+
 ### LESSON: Scope CSS selectors tightly in scrapers
 When scraping, always scope selectors to the specific container (e.g., `.gallery-component`) instead of broad page-wide selectors. Broad selectors cause cross-contamination — we had a bug where one app's icon changes appeared under other apps because `img[src*="cdn.shopify.com"]` matched related app cards too.
 **Source:** qa-decisions.md 2026-03-07, screenshot cross-contamination bug
@@ -53,6 +57,14 @@ Pick one language (English) and use it everywhere. We had a jarring mix of Vietn
 ---
 
 ## Architecture & Security
+
+### LESSON: Parallelize independent scrapers — never run Puppeteer tasks sequentially in Cloud Functions
+Sequential Puppeteer scrapers easily exceed Cloud Function timeouts (540s). Use `Promise.allSettled` so each scraper type runs concurrently and one failure doesn't block others. Bump memory when running parallel browser instances.
+**Source:** TASK-006, scheduler timeout causing partial scrapes (2026-03-07)
+
+### LESSON: Always filter by ownerEmail in user-facing endpoints
+Every endpoint that queries user data MUST include `.where("ownerEmail", "==", req.userEmail)`. We've had this bug twice now — first in `/api/changes/latest`, then in ALL 6 scrape-all endpoints. When adding a new endpoint, check if it filters by owner before shipping.
+**Source:** dev-decisions.md 2026-03-07, scrape-all ownerEmail fix
 
 ### LESSON: Never trust x-user-email header without JWT verification
 The current auth setup trusts the `x-user-email` header directly. This is a known critical vulnerability — any site can impersonate users. When working on auth, always verify tokens server-side.

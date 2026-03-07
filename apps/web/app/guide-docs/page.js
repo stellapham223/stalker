@@ -60,13 +60,12 @@ export default function GuideDocsPage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerGuideDocsScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["guide-docs-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["guide-docs-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["guide-docs-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["guide-docs-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[GuideDocsScrapeAll] Error:", error);
     },
   });
 

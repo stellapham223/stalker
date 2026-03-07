@@ -52,13 +52,12 @@ export default function AutocompletePage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerAutocompleteScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["autocomplete-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["autocomplete-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["autocomplete-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["autocomplete-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[AutocompleteScrapeAll] Error:", error);
     },
   });
 

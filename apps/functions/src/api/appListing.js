@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
   getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
-  addSnapshot, getSnapshots, getLatestSnapshot,
+  addSnapshot, getSnapshots, getLatestSnapshot, getRecentDiffs, isNoisyFieldDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeAppListing, computeAppListingDiff } from "../scrapers/appListingScraper.js";
@@ -61,6 +61,7 @@ appListingRoutes.post("/:id/scrape", async (req, res) => {
     await runAppListingScrape(competitor);
     res.json({ message: "App listing scrape completed" });
   } catch (err) {
+    console.error("[app-listing] Scrape error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -87,8 +88,10 @@ appListingRoutes.get("/dashboard", async (req, res) => {
 
     const timeline = sessions.map((session) => {
       const rows = competitors.map((competitor) => {
-        const snap = session.snapshots.find((s) => s.parentId === competitor.id);
-        if (!snap) return { competitorId: competitor.id, name: competitor.name, changes: null };
+        const competitorSnaps = session.snapshots.filter((s) => s.parentId === competitor.id);
+        if (competitorSnaps.length === 0) return { competitorId: competitor.id, name: competitor.name, changes: null };
+        // Prefer a snapshot with changes; fall back to the latest one
+        const snap = competitorSnaps.find((s) => s.diff && Object.keys(s.diff).length > 0) || competitorSnaps[0];
 
         const diff = snap.diff;
         if (!diff || Object.keys(diff).length === 0) {
@@ -114,7 +117,7 @@ appListingRoutes.get("/dashboard", async (req, res) => {
 
 appListingRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
     const competitors = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     for (const competitor of competitors) {
       try { await runAppListingScrape(competitor); }
@@ -130,7 +133,14 @@ export async function runAppListingScrape(competitor) {
   console.log(`[app-listing] Starting scrape for: ${competitor.name}`);
   const data = await scrapeAppListing(competitor.appUrl);
   const previous = await getLatestSnapshot(COLLECTION, competitor.id);
-  const { diff, hasChanges } = computeAppListingDiff(previous?.data || null, data);
+  let { diff, hasChanges } = computeAppListingDiff(previous?.data || null, data);
+  if (hasChanges) {
+    const recentDiffs = await getRecentDiffs(COLLECTION, competitor.id);
+    if (isNoisyFieldDiff(recentDiffs, diff)) {
+      hasChanges = false;
+      diff = null;
+    }
+  }
   await addSnapshot(COLLECTION, competitor.id, {
     competitorId: competitor.id, data, diff: hasChanges ? diff : null,
   });

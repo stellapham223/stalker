@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
-import { serializeDoc } from "../db/helpers.js";
+import { requireAuth } from "./middleware.js";
 
 export const changesRoutes = Router();
 
+changesRoutes.use(requireAuth);
+
 changesRoutes.get("/latest", async (req, res) => {
   try {
+    const email = req.userEmail;
     const [
       keywordsSnap,
       autocompletesSnap,
@@ -14,12 +17,12 @@ changesRoutes.get("/latest", async (req, res) => {
       homepageSnap,
       guideDocsSnap,
     ] = await Promise.all([
-      db.collection("keywordTrackings").where("active", "==", true).get(),
-      db.collection("autocompleteTrackings").where("active", "==", true).get(),
-      db.collection("appListingCompetitors").where("active", "==", true).get(),
-      db.collection("websiteMenuTrackings").where("active", "==", true).get(),
-      db.collection("homepageTrackings").where("active", "==", true).get(),
-      db.collection("guideDocsTrackings").where("active", "==", true).get(),
+      db.collection("keywordTrackings").where("active", "==", true).where("ownerEmail", "==", email).get(),
+      db.collection("autocompleteTrackings").where("active", "==", true).where("ownerEmail", "==", email).get(),
+      db.collection("appListingCompetitors").where("active", "==", true).where("ownerEmail", "==", email).get(),
+      db.collection("websiteMenuTrackings").where("active", "==", true).where("ownerEmail", "==", email).get(),
+      db.collection("homepageTrackings").where("active", "==", true).where("ownerEmail", "==", email).get(),
+      db.collection("guideDocsTrackings").where("active", "==", true).where("ownerEmail", "==", email).get(),
     ]);
 
     const keywords = keywordsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));

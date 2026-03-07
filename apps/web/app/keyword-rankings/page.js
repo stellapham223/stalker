@@ -52,13 +52,12 @@ export default function KeywordRankingsPage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerKeywordScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["keyword-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["keyword-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["keyword-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["keyword-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[KeywordScrapeAll] Error:", error);
     },
   });
 

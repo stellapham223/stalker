@@ -1,30 +1,41 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAppListingSnapshots, triggerAppListingScrape } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileSearch } from "lucide-react";
+import { FileSearch, Check, AlertCircle } from "lucide-react";
 import { normalizeScreenshots, diffScreenshots } from "./dashboard-tab";
 
 export function CompetitorDetail({ competitorId, competitorName }) {
   const queryClient = useQueryClient();
+  const [scrapeStatus, setScrapeStatus] = useState(null); // "success" | "error" | null
+
+  // Clear status after 3 seconds
+  useEffect(() => {
+    if (!scrapeStatus) return;
+    const timer = setTimeout(() => setScrapeStatus(null), 3000);
+    return () => clearTimeout(timer);
+  }, [scrapeStatus]);
 
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["app-listing-snapshots", competitorId],
     queryFn: () => fetchAppListingSnapshots(competitorId, 2),
+    staleTime: 0, // Always refetch when tab is switched
   });
 
   const scrapeMutation = useMutation({
     mutationFn: triggerAppListingScrape,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["app-listing-snapshots", competitorId] });
-        queryClient.invalidateQueries({ queryKey: ["app-listing-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["app-listing-snapshots", competitorId] });
+      queryClient.invalidateQueries({ queryKey: ["app-listing-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+      setScrapeStatus("success");
+    },
+    onError: (error) => {
+      console.error("[ScrapeNow] Error:", error);
+      setScrapeStatus("error");
     },
   });
 
@@ -56,7 +67,15 @@ export function CompetitorDetail({ competitorId, competitorName }) {
             onClick={() => scrapeMutation.mutate(competitorId)}
             disabled={scrapeMutation.isPending}
           >
-            {scrapeMutation.isPending ? "Scraping..." : "Scrape Now"}
+            {scrapeMutation.isPending ? (
+              "Scraping..."
+            ) : scrapeStatus === "success" ? (
+              <><Check className="h-4 w-4 mr-1" /> Done</>
+            ) : scrapeStatus === "error" ? (
+              <><AlertCircle className="h-4 w-4 mr-1" /> Failed</>
+            ) : (
+              "Scrape Now"
+            )}
           </Button>
         </div>
         {latest?.createdAt && (

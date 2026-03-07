@@ -128,7 +128,7 @@ adminRoutes.post("/migrate-ownership", async (req, res) => {
         for (let i = 1; i < EXISTING_USERS.length; i++) {
           const newId = uuid();
           const newRef = db.collection(col).doc(newId);
-          await newRef.set({ ...data, ownerEmail: EXISTING_USERS[i], createdAt: data.createdAt || new Date() });
+          await newRef.set({ ...data, ownerEmail: EXISTING_USERS[i], createdAt: data.createdAt || new Date().toISOString() });
 
           // Copy snapshots
           for (const snapDoc of snapshotsSnap.docs) {

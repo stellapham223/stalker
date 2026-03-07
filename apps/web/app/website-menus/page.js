@@ -52,13 +52,12 @@ export default function WebsiteMenusPage() {
   const scrapeAllMutation = useMutation({
     mutationFn: triggerWebsiteMenuScrapeAll,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["menu-snapshots"] });
-        queryClient.invalidateQueries({ queryKey: ["menu-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["menu-snapshots"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["menu-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[WebsiteMenuScrapeAll] Error:", error);
     },
   });
 

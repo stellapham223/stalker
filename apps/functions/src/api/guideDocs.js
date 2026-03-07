@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
   getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, updateDoc, deleteDocWithSnapshots,
-  addSnapshot, getSnapshots, getLatestSnapshot,
+  addSnapshot, getSnapshots, getLatestSnapshot, getLatestSnapshotWithDiff, isDuplicateDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeGuideDocs, computeGuideDocsDiff } from "../scrapers/guideDocsScraper.js";
@@ -85,7 +85,7 @@ guideDocsRoutes.post("/:id/scrape", async (req, res) => {
 
 guideDocsRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).get();
+    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
     const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     for (const tracking of trackings) {
       try { await runGuideDocsScrape(tracking); }
@@ -144,7 +144,14 @@ export async function runGuideDocsScrape(tracking) {
   console.log(`[guide-docs] Starting scrape for: ${tracking.name}`);
   const navData = await scrapeGuideDocs(tracking.url);
   const previous = await getLatestSnapshot(COLLECTION, tracking.id);
-  const { diff, hasChanges } = computeGuideDocsDiff(previous?.navData || null, navData);
+  let { diff, hasChanges } = computeGuideDocsDiff(previous?.navData || null, navData);
+  if (hasChanges) {
+    const lastWithDiff = await getLatestSnapshotWithDiff(COLLECTION, tracking.id);
+    if (lastWithDiff && isDuplicateDiff(lastWithDiff.diff, diff)) {
+      hasChanges = false;
+      diff = null;
+    }
+  }
   await addSnapshot(COLLECTION, tracking.id, {
     trackingId: tracking.id, navData, diff: hasChanges ? diff : null,
   });

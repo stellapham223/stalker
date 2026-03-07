@@ -75,3 +75,37 @@ This file logs important QA and testing decisions made by the QA Engineer agent.
 - **Fix:** Backend now returns per-item `snapshotAt`. Frontend compares each item's `snapshotAt` against its own localStorage `seenAt`. `markSeen` stores `new Date().toISOString()` instead of `data?.sessionAt`.
 
 **Affected files:** `apps/functions/src/api/changes.js`, `apps/functions/src/scheduler.js`, `apps/web/hooks/useChangesBadge.js`
+
+---
+
+## [2026-03-07] Bug Analysis — Duplicate Changes Across Consecutive Scrapes
+**Agent:** QA Engineer
+**Decision:** Diagnosed root cause of duplicate changes appearing in consecutive scrape sessions.
+
+**Symptom:** The most recent scrape records changes identical to the previous scrape — same diff content appearing in multiple snapshots.
+
+**Root Cause (PRIMARY) — Non-deterministic scraping:**
+The diff algorithms (`computeMenuDiff`, `computeHomepageDiff`, `computeGuideDocsDiff`) are correct. The problem is that **Puppeteer-based scrapers produce different content on each page load** due to:
+- Dynamic counters/stats ("Trusted by 10,432 merchants" changes between loads)
+- Rotating testimonials or carousels captured at different positions
+- Lazy-loaded elements that may or may not render within Puppeteer's wait time
+- A/B test variants served to different sessions
+- Menu items loading in different order due to JS execution timing
+
+This causes every scrape to detect "changes" even when the website hasn't actually been updated. The diffs look identical because the same dynamic elements keep "changing."
+
+**Contributing Factor (SECONDARY) — `getLatestWithChanges` amplifies visibility:**
+`changes.js:110-129` searches last 10 snapshots for the most recent one WITH changes. Combined with false-positive diffs on every scrape, there is always a "change" to display, making the system appear stuck in a loop.
+
+**Most affected scrapers:**
+1. Homepage (`homepageScraper.js`) — `fullText` comparison via `computeDiff` (line-by-line diff of entire page text)
+2. Menu (`menuScraper.js`) — Puppeteer load timing affects which items appear
+3. Guide docs (`guideDocsScraper.js`) — Similar to menu
+4. App listing (`appListingScraper.js`) — Less affected (uses cheerio/fetch, not Puppeteer), but Shopify A/B tests can still cause variation
+
+**Recommended fix (TASK-005 created for developer):**
+Quick fix: Add `skipIfIdenticalDiff` guard in `scheduler.js` — before saving with diff, compare against previous snapshot's diff. If JSON-identical, save with `diff: null`.
+Long-term: Normalize scraper output (strip dynamic elements, sort arrays, fingerprint stable content).
+
+**Affected files:** `apps/functions/src/scheduler.js`, all scraper files
+**Cross-refs:** TASK-005 in docs/tasks.md, playbook.md lesson added

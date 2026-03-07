@@ -17,11 +17,11 @@ export async function checkEmail(email) {
         websiteMenus: true,
         homepageMonitor: true,
         guideDocs: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
     } else {
-      await ref.update({ isAdmin: true, updatedAt: new Date() });
+      await ref.update({ isAdmin: true, updatedAt: new Date().toISOString() });
     }
     return true;
   }
@@ -71,8 +71,8 @@ export async function addUser(email) {
     websiteMenus: true,
     homepageMonitor: true,
     guideDocs: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   await ref.set(data);
   return { id: email, ...data };
@@ -80,7 +80,7 @@ export async function addUser(email) {
 
 export async function updateUser(id, updates) {
   const ref = db.collection(COLLECTION).doc(id);
-  await ref.update({ ...updates, updatedAt: new Date() });
+  await ref.update({ ...updates, updatedAt: new Date().toISOString() });
   const doc = await ref.get();
   return { id: doc.id, ...doc.data() };
 }
@@ -106,8 +106,8 @@ export async function importUsers(emails) {
           websiteMenus: true,
           homepageMonitor: true,
           guideDocs: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
       }
       created++;

@@ -13,18 +13,18 @@ export function KeywordDetail({ keywordId, keywordText }) {
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["keyword-snapshots", keywordId],
     queryFn: () => fetchKeywordSnapshots(keywordId, 2),
+    staleTime: 0,
   });
 
   const scrapeMutation = useMutation({
     mutationFn: triggerKeywordScrape,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["keyword-snapshots", keywordId] });
-        queryClient.invalidateQueries({ queryKey: ["keyword-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["keyword-snapshots", keywordId] });
+      queryClient.invalidateQueries({ queryKey: ["keyword-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[KeywordScrapeNow] Error:", error);
     },
   });
 

@@ -15,18 +15,18 @@ export function GuideDocsDetail({ trackingId, tracking }) {
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["guide-docs-snapshots", trackingId],
     queryFn: () => fetchGuideDocsSnapshots(trackingId, 2),
+    staleTime: 0,
   });
 
   const scrapeMutation = useMutation({
     mutationFn: triggerGuideDocsScrape,
     onSuccess: () => {
-      let attempts = 0;
-      const poll = setInterval(() => {
-        attempts++;
-        queryClient.invalidateQueries({ queryKey: ["guide-docs-snapshots", trackingId] });
-        queryClient.invalidateQueries({ queryKey: ["guide-docs-dashboard"] });
-        if (attempts >= 10) clearInterval(poll);
-      }, 3000);
+      queryClient.invalidateQueries({ queryKey: ["guide-docs-snapshots", trackingId] });
+      queryClient.invalidateQueries({ queryKey: ["guide-docs-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["changes-latest"] });
+    },
+    onError: (error) => {
+      console.error("[GuideDocsScrapeNow] Error:", error);
     },
   });
 
