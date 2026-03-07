@@ -28,7 +28,14 @@ const nextauthSecret = defineSecret("NEXTAUTH_SECRET");
 // ============ Express API (single Firebase Function) ============
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000").split(",");
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Internal auth routes (called server-to-server from NextAuth callbacks)
@@ -38,7 +45,6 @@ app.use("/auth", authRoutes);
 app.use((req, res, next) => {
   if (req.method === "GET") return next();
   if (req.path === "/health") return next();
-  if (req.path === "/scrape-all") return next();
   return requireAuth(req, res, next);
 });
 
@@ -55,8 +61,12 @@ app.use("/guide-docs", guideDocsRoutes);
 app.use("/changes", changesRoutes);
 app.use("/admin", adminRoutes);
 
-// Global scrape-all trigger
-app.post("/scrape-all", async (_req, res) => {
+// Global scrape-all trigger (requires internal auth secret)
+app.post("/scrape-all", async (req, res) => {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret || req.headers["x-internal-auth"] !== secret) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   try {
     await runScrapeAll();
     res.json({ message: "scrape-all completed" });

@@ -62,6 +62,7 @@ When an agent makes an important decision, append to the relevant file in `docs/
 ### Current Team Members
 - `/ux-designer` — Senior UX/UI Designer (decisions: `docs/decisions/ux-decisions.md`)
 - `/qa-engineer` — Senior QA Engineer (decisions: `docs/decisions/qa-decisions.md`)
+- `/developer` — Senior Full-Stack Developer (decisions: `docs/decisions/dev-decisions.md`)
 - More agents will be added as the team grows
 
 ### Agent Autonomy Rules

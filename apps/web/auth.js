@@ -1,7 +1,13 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import crypto from "crypto";
 
 const API_URL = process.env.NEXTAUTH_API_URL || "http://localhost:4000";
+
+function createAuthToken(email) {
+  const secret = process.env.NEXTAUTH_SECRET || "";
+  return crypto.createHmac("sha256", secret).update(email).digest("hex");
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -78,6 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.isAdmin = token.isAdmin ?? false;
         session.user.permissions = token.permissions ?? {};
         session.user.revoked = token.revoked ?? false;
+        session.user.authToken = createAuthToken(token.email);
       }
       return session;
     },

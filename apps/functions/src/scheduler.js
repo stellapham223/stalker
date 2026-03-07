@@ -16,6 +16,7 @@ import { sendTelegramMessage } from "./scrapers/telegram.js";
  * Replaces pg-boss job queue + cron schedule.
  */
 export async function runScrapeAll() {
+  const scrapeStartTime = new Date();
   let totalJobs = 0;
 
   // 1. Competitor scraping
@@ -198,12 +199,12 @@ export async function runScrapeAll() {
   console.log(`[scheduler] Completed ${totalJobs} scrape jobs`);
 
   // 8. Send Telegram notification
-  await sendNotification();
+  await sendNotification(scrapeStartTime);
 }
 
-async function sendNotification() {
+async function sendNotification(scrapeStartTime) {
   console.log("[notify] Building change summary...");
-  const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const since = scrapeStartTime;
 
   function countKeywordChanges(snap) {
     if (!snap) return 0;

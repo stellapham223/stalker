@@ -5,7 +5,9 @@ const API_URL = "";
 export async function getAuthHeaders() {
   const session = await getSession();
   const email = session?.user?.email;
-  return email ? { "x-user-email": email } : {};
+  const authToken = session?.user?.authToken;
+  if (!email || !authToken) return {};
+  return { "x-user-email": email, "x-auth-token": authToken };
 }
 
 export async function fetchJSON(path) {

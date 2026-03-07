@@ -4,109 +4,90 @@
 
 **Mục tiêu:** Xây dựng hệ thống theo dõi tự động các thay đổi của đối thủ cạnh tranh trên Shopify App Store, bao gồm: thông tin app listing, ranking keywords, và autocomplete suggestions.
 
-**Tech Stack hiện tại:** Express + Puppeteer + Prisma + PostgreSQL + pg-boss (backend), Next.js + shadcn/ui + TanStack Query (frontend)
+**Tech Stack hiện tại:** Firebase Functions Gen 2 (Express + Puppeteer/Cheerio) + Firestore (backend), Next.js 15 + shadcn/ui + TanStack Query v5 (frontend). Monorepo: Bun workspaces (`apps/web`, `apps/functions`).
+
+> **Migration note:** Đã chuyển từ Prisma + PostgreSQL + pg-boss sang Firebase Functions + Firestore + Cloud Scheduler.
 
 ---
 
-## 2. Feature 1: Stalk App Listing Changes via Letsmetrix
+## 2. Feature 1: Stalk App Listing Changes (Direct Shopify Scraping)
 
 ### 2.1 Mô tả
 
-Tự động scrape và theo dõi thay đổi trên trang so sánh Letsmetrix: [Compare Page](https://letsmetrix.com/app/seal-subscriptions/compare-app/vs/kaching-subscriptions-lmtvs-subi-subscriptions-memberships-lmtvs-subscriptions-by-appstle)
+Tự động scrape và theo dõi thay đổi trực tiếp trên trang app listing của Shopify App Store. Mỗi competitor là một app URL trên Shopify (e.g. `https://apps.shopify.com/seal-subscriptions`).
 
-Theo dõi dữ liệu từ **4 tab**: App Info, Ranking, Pricing, Review.
+> **Lưu ý:** Ban đầu PRD thiết kế dùng Letsmetrix comparison pages. Đã chuyển sang scrape trực tiếp Shopify vì: (1) Không phụ thuộc third-party, (2) Lấy được dữ liệu real-time từ nguồn gốc, (3) Shopify app pages là SSR nên dùng fetch + cheerio (không cần Puppeteer).
 
 ### 2.2 Dữ liệu cần scrape
 
-#### Tab: App Info
 | Field | Mô tả |
 |---|---|
-| App Name | Tên app |
-| Developer | Tên nhà phát triển |
-| Tag Line | Mô tả ngắn |
-| Description | Mô tả chi tiết |
-| Launched Date | Ngày ra mắt |
-| Category | Danh mục app |
-| Rating | Điểm đánh giá trung bình |
-| Total Reviews | Tổng số reviews |
+| title | Tên app (h1) |
+| subtitle | Tagline (trích từ page title) |
+| screenshots | Gallery images (từ `.gallery-component`, lọc bỏ icon) |
+| videos | YouTube/Vimeo embeds (iframe) |
+| appDetails | Mô tả chi tiết app (section đầu tiên có heading > 10 chars) |
+| languages | Ngôn ngữ hỗ trợ (từ grid section "Languages") |
+| worksWith | Tích hợp (từ grid section "Works with") |
+| categories | Danh mục app (từ grid section "Categories") |
+| pricing | Pricing plans (từ `.pricing-plan-card` — heading + full text) |
 
-#### Tab: Ranking
-| Field | Mô tả |
-|---|---|
-| Category Ranking | Thứ hạng trong category |
-| Overall Ranking | Thứ hạng tổng thể |
-| Ranking Trend | Xu hướng tăng/giảm |
-
-#### Tab: Pricing
-| Field | Mô tả |
-|---|---|
-| Plans | Danh sách các plan (tên, giá, features) |
-| Free Plan | Có/không, chi tiết |
-| Free Trial | Có/không, thời gian |
-
-#### Tab: Review
-| Field | Mô tả |
-|---|---|
-| Rating Distribution | Phân bố 1-5 sao |
-| Recent Reviews Summary | Tóm tắt reviews gần đây |
-| Review Count Changes | Thay đổi số lượng review |
-
-### 2.3 Data Model
+### 2.3 Data Model (Firestore)
 
 ```
-Model: LetsmetrixComparison
+Collection: appListingCompetitors
 ─────────────────────────────────
-id              String    @id @default(uuid())
-comparisonUrl   String    // URL trang so sánh Letsmetrix
-name            String    // Tên nhóm so sánh (e.g. "Seal vs Competitors")
-active          Boolean   @default(true)
-createdAt       DateTime  @default(now())
-updatedAt       DateTime  @updatedAt
-→ snapshots     LetsmetrixSnapshot[]
+id              String    (auto-generated UUID)
+name            String    // Tên app (e.g. "Seal Subscriptions")
+appUrl          String    // URL trang app trên Shopify App Store
+active          Boolean   (default: true)
+ownerEmail      String    // Email user sở hữu
+createdAt       DateTime
+updatedAt       DateTime
+→ snapshots     Subcollection
 
-Model: LetsmetrixSnapshot
+Subcollection: snapshots
 ─────────────────────────────────
-id              String    @id @default(uuid())
-comparisonId    String    → LetsmetrixComparison
-tab             String    // "app_info" | "ranking" | "pricing" | "review"
-appName         String    // Tên app trong bảng so sánh
-data            Json      // Dữ liệu scrape được (JSON)
-diff            Json?     // Diff so với snapshot trước
-createdAt       DateTime  @default(now())
-
-@@index([comparisonId, tab, appName, createdAt])
+id              String    (auto-generated UUID)
+competitorId    String    // ID của parent document
+data            Json      // {title, subtitle, screenshots, videos, appDetails, languages, worksWith, categories, pricing}
+diff            Json?     // {fieldName: {old, new}} — null nếu không có thay đổi
+createdAt       DateTime
 ```
 
 ### 2.4 Scraping Strategy
 
-- **Puppeteer** để render trang (Letsmetrix là SPA dùng Next.js)
-- Click vào từng tab (App Info → Ranking → Pricing → Review) để lấy nội dung
-- Parse bảng so sánh: mỗi cột là 1 app, mỗi hàng là 1 field
-- Lưu dạng JSON cho từng app, từng tab
-- So sánh với snapshot trước để tạo diff
+- **Fetch + Cheerio** (server-side rendered HTML parsing, không cần Puppeteer)
+- Parse trực tiếp HTML response từ Shopify app page
+- Screenshots: scope vào `.gallery-component` container, lọc bỏ `/icon/` URLs và app title matches
+- Videos: tìm iframe có src chứa "youtube" hoặc "vimeo"
+- App details: tìm h2 đầu tiên có heading > 10 chars, loại bỏ sections không liên quan (Pricing, Reviews, Support, etc.)
+- Languages/Works with/Categories: tìm trong grid sections (`[class*="tw-grid"]`)
+- Pricing: parse từ `.pricing-plan-card` elements
+- So sánh field-by-field với snapshot trước (normalize screenshots trước khi compare)
 
 ### 2.5 Cron Schedule
 
 - Chạy mỗi ngày **1 lần lúc 6:00 AM GMT+7** (23:00 UTC) → Cron: `0 23 * * *`
-- Job name: `scrape-letsmetrix-comparison`
+- Chạy chung trong `runScrapeAll()` (step 4/7)
 
 ### 2.6 API Endpoints
 
 | Method | Path | Mô tả |
 |---|---|---|
-| GET | `/api/letsmetrix/comparisons` | Danh sách các comparison đang theo dõi |
-| POST | `/api/letsmetrix/comparisons` | Thêm comparison URL mới |
-| DELETE | `/api/letsmetrix/comparisons/:id` | Xóa comparison |
-| GET | `/api/letsmetrix/comparisons/:id/snapshots` | Lịch sử snapshots (filter by tab, appName) |
-| GET | `/api/letsmetrix/comparisons/:id/changes` | Chỉ lấy những snapshots có diff |
-| POST | `/api/letsmetrix/comparisons/:id/scrape` | Trigger scrape thủ công |
+| GET | `/api/app-listing` | Danh sách apps đang theo dõi (by owner) |
+| POST | `/api/app-listing` | Thêm app mới (name + appUrl) |
+| DELETE | `/api/app-listing/:id` | Xóa app (with ownership check) |
+| GET | `/api/app-listing/:id/snapshots` | Lịch sử snapshots (default limit: 2) |
+| POST | `/api/app-listing/:id/scrape` | Trigger scrape thủ công |
+| GET | `/api/app-listing/dashboard` | Timeline view — grouped sessions với diff per competitor |
+| POST | `/api/app-listing/scrape-all` | Scrape tất cả apps active |
 
 ### 2.7 UI
 
 - **Trang "App Listing"** trong sidebar
-- Hiển thị bảng so sánh giống Letsmetrix, nhưng kèm highlight diff (đỏ = bị xóa, xanh = thêm mới)
-- Filter theo tab (App Info / Ranking / Pricing / Review)
-- Timeline view: chọn ngày để xem snapshot tại thời điểm đó
+- Dashboard timeline: hiển thị sessions grouped by time, mỗi session có diff per competitor
+- Highlight thay đổi theo field (đỏ = bị xóa, xanh = thêm mới)
 - Nút "Scrape Now" để trigger scrape thủ công
 
 ---
@@ -690,30 +671,23 @@ createdAt       DateTime  @default(now())
 ## 7. Schema Prisma Tổng hợp (Thêm vào schema hiện tại)
 
 ```prisma
-// ============ Feature 1: Letsmetrix Comparison ============
+// ============ Feature 1: App Listing (Direct Shopify Scraping) ============
+// NOTE: Migrated from Prisma to Firestore. Schema below is for reference only.
+// Firestore collection: appListingCompetitors → subcollection: snapshots
 
-model LetsmetrixComparison {
-  id            String                @id @default(uuid())
-  name          String
-  comparisonUrl String
-  active        Boolean               @default(true)
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  snapshots     LetsmetrixSnapshot[]
-}
-
-model LetsmetrixSnapshot {
-  id           String               @id @default(uuid())
-  comparisonId String
-  comparison   LetsmetrixComparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
-  tab          String               // "app_info" | "ranking" | "pricing" | "review"
-  appName      String
-  data         Json
-  diff         Json?
-  createdAt    DateTime             @default(now())
-
-  @@index([comparisonId, tab, appName, createdAt])
-}
+// appListingCompetitors/{id}
+//   name            String
+//   appUrl          String    // Shopify App Store URL
+//   active          Boolean
+//   ownerEmail      String
+//   createdAt       DateTime
+//   updatedAt       DateTime
+//
+// appListingCompetitors/{id}/snapshots/{snapshotId}
+//   competitorId    String
+//   data            Json      // {title, subtitle, screenshots, videos, appDetails, languages, worksWith, categories, pricing}
+//   diff            Json?     // {fieldName: {old, new}}
+//   createdAt       DateTime
 
 // ============ Feature 2: Keyword Ranking ============
 
@@ -826,14 +800,14 @@ apps/api/
 │   ├── competitors.js          (existing)
 │   ├── snapshots.js            (existing)
 │   ├── jobs.js                 (existing)
-│   ├── letsmetrix.js           (NEW - Feature 1)
+│   ├── appListing.js           (Feature 1 - direct Shopify scraping)
 │   ├── keywords.js             (NEW - Feature 2)
 │   └── autocomplete.js         (NEW - Feature 3)
 ├── services/
 │   ├── scraper.js              (existing)
 │   ├── scheduler.js            (existing - thêm 3 jobs mới)
 │   ├── differ.js               (existing)
-│   ├── letsmetrix-scraper.js   (NEW - Scraper cho Letsmetrix)
+│   ├── appListingScraper.js    (Scraper cho Shopify app listing - fetch + cheerio)
 │   ├── keyword-scraper.js      (NEW - Scraper cho Shopify search)
 │   ├── autocomplete-scraper.js (NEW - Scraper cho autocomplete)
 │   ├── menu-scraper.js         (NEW - Scraper cho website menus - Feature 4)
@@ -882,19 +856,12 @@ Homepage Monitor    (NEW - Feature 5)
 ```javascript
 // Feature types
 export const FEATURE_TYPES = {
-  LETSMETRIX: "letsmetrix",
+  APP_LISTING: "app_listing",
   KEYWORD_RANKING: "keyword_ranking",
   AUTOCOMPLETE: "autocomplete",
   WEBSITE_MENU: "website_menu",
   HOMEPAGE_CONTENT: "homepage_content",
-};
-
-// Letsmetrix tabs
-export const LETSMETRIX_TABS = {
-  APP_INFO: "app_info",
-  RANKING: "ranking",
-  PRICING: "pricing",
-  REVIEW: "review",
+  GUIDE_DOCS: "guide_docs",
 };
 
 // Default keywords to track
@@ -923,7 +890,7 @@ export const DEFAULT_COMPETITOR_WEBSITES = [
 // Job names
 export const JOB_NAMES = {
   SCRAPE_COMPETITORS: "scrape-competitors",
-  SCRAPE_LETSMETRIX: "scrape-letsmetrix-comparison",
+  SCRAPE_APP_LISTING: "scrape-app-listing",
   SCRAPE_KEYWORDS: "scrape-keyword-rankings",
   SCRAPE_AUTOCOMPLETE: "scrape-autocomplete",
   SCRAPE_WEBSITE_MENUS: "scrape-website-menus",

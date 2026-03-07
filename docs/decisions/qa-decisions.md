@@ -33,3 +33,25 @@ This file logs important QA and testing decisions made by the QA Engineer agent.
 **Fix:** Scoped image selector to `.gallery-component` (Shopify's gallery container) with body fallback, and added `/icon/` URL filter as secondary guard.
 **Verified:** Tested against live Shopify pages — Subi went from 15 to 12 screenshots (Seal contamination removed), Joy from 11 to 8, Seal's own 7 screenshots preserved.
 **Affected files:** `apps/functions/src/scrapers/appListingScraper.js`
+
+---
+
+## [2026-03-07] QA Review — Scheduled Scraping System (Post First Run)
+**Agent:** QA Engineer
+**Decision:** Full QA review of scheduler, scrapers, and supporting code after first scheduled run.
+**Screenshot false positive confirmed:** Dashboard shows screenshot changes for all apps after first run post-fix. This is expected one-time behavior — old baseline snapshots contain contaminated screenshots, new snapshots are clean, diff shows the delta. Will auto-resolve after next scheduled run.
+**Key findings (11 issues):**
+1. **CRITICAL — Auth bypass:** `x-user-email` header trusted without JWT verification + CORS fully permissive (`origin: true`). Any site can impersonate users. (middleware.js:5, index.js:31)
+2. **CRITICAL — `/scrape-all` public:** Middleware skips auth (index.js:41). Anyone can trigger expensive 2GiB scrape cycles.
+3. **WARNING — Browser cleanup in scrapers:** Puppeteer browser launched before try/finally block in competitorScraper, menuScraper, homepageScraper, guideDocsScraper. If page setup fails, browser process leaks.
+4. **WARNING — 540s timeout may be insufficient:** 7 sequential scrapers with multiple tracked items. If 5+ items per collection, total time could exceed 9 min Cloud Function limit.
+5. **WARNING — Notification `since` window is fragile:** Hardcoded 2h lookback (scheduler.js:206). Should use scrape start time instead.
+6. **WARNING — Firestore batch limit 500:** `deleteDocWithSnapshots` (helpers.js:126) will fail for docs with 500+ snapshots.
+7. **WARNING — `getRecentSnapshotsWithDiff` is misleading:** Returns latest snapshot regardless of diff existence (helpers.js:240). Works by accident for keywords (fields stored at top level) but inconsistent with other types.
+8. **SUGGESTION — Telegram 4096 char limit:** Large change reports could exceed max message length.
+9. **SUGGESTION — `totalJobs` counter misleading:** Counts parent docs, not actual snapshots written.
+10. **SUGGESTION — Competitor snapshot query inconsistency:** Uses manual query instead of getLatestSnapshot helper (scheduler.js:32-37).
+11. **SUGGESTION — differ.js counts chunks not lines:** diffSummary reports section count instead of line count.
+**PRD update:** Feature 1 updated from Letsmetrix comparison to direct Shopify app listing scraping.
+**Overall risk:** High — auth issues are top priority.
+**Affected files:** `apps/functions/src/index.js`, `apps/functions/src/scheduler.js`, `apps/functions/src/api/middleware.js`, `apps/functions/src/db/helpers.js`, all scraper files, `PRD.md`

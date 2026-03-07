@@ -125,11 +125,15 @@ export async function updateDoc(collection, id, data) {
 export async function deleteDocWithSnapshots(collection, id) {
   const docRef = db.collection(collection).doc(id);
 
-  // Delete snapshots subcollection
+  // Delete snapshots subcollection in chunks (Firestore batch limit is 500)
   const snapshotsSnap = await docRef.collection("snapshots").get();
-  const batch = db.batch();
-  snapshotsSnap.docs.forEach((snap) => batch.delete(snap.ref));
-  if (snapshotsSnap.docs.length > 0) await batch.commit();
+  const docs = snapshotsSnap.docs;
+  for (let i = 0; i < docs.length; i += 400) {
+    const chunk = docs.slice(i, i + 400);
+    const batch = db.batch();
+    chunk.forEach((snap) => batch.delete(snap.ref));
+    await batch.commit();
+  }
 
   await docRef.delete();
 }
