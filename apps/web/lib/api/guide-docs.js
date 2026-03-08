@@ -16,7 +16,10 @@ export async function updateGuideDocsTracking(id, data) {
     credentials: "include",
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `API error: ${res.status}`);
+  }
   return res.json();
 }
 
