@@ -70,3 +70,28 @@ Decisions made by the Developer agent that affect the codebase.
 **Rationale:** Retrospective found that bugs were recurring because the same logic existed in 2-6 places. Fixing one copy left others broken, creating bug chains (badge bug fixed 3 times, admin page fixed 4 times, ownerEmail leak fixed twice). Consolidating to single source of truth means future changes only need to happen in one place.
 **Affected files:** `packages/shared/diff-utils.js` (new), `packages/shared/diff-utils.test.js` (new), `packages/shared/constants.js`, `packages/shared/package.json`, `apps/functions/src/api/changes.js`, `apps/functions/src/scheduler.js`, `apps/functions/src/db/helpers.js`, + all 6 feature API files (keywords, appListing, autocomplete, websiteMenus, homepage, guideDocs)
 **Cross-refs:** playbook.md — new lessons on code duplication
+
+## [2026-03-08] Fix guide docs update URL + CORS + Firebase deploy (4 bugs)
+**Agent:** developer
+**Decision:** Fixed 4 interconnected bugs preventing guide docs URL editing and Firebase Functions deployment on production.
+
+**Bug 1 — Missing auth headers on PUT request:**
+`updateGuideDocsTracking()` in `apps/web/lib/api/guide-docs.js` was the only API function using raw `fetch` without `getAuthHeaders()`. All other functions use `fetchJSON/postJSON/deleteJSON` wrappers which include auth automatically. Without `x-user-email` and `x-auth-token` headers, the backend rejected the request.
+**Fix:** Added `getAuthHeaders()` call, spread into headers, added error handling matching the other wrappers.
+
+**Bug 2 — CORS 500 on production (root cause of all mutation failures):**
+Browser sends `origin: https://stalker-api.vercel.app` header on PUT/DELETE/POST requests. Next.js rewrites forward this header to the Firebase Function. The CORS middleware called `callback(new Error("Not allowed by CORS"))` when origin wasn't in `ALLOWED_ORIGINS` — this throws an unhandled Express error, returning an HTML 500 page instead of a JSON response. GET requests worked because browsers don't send `origin` on same-origin simple GET requests.
+**Fix:** (1) Added `https://stalker-api.vercel.app` to default `ALLOWED_ORIGINS`. (2) Changed CORS reject from `callback(new Error(...))` to `callback(null, false)` — rejects the CORS request without crashing Express.
+
+**Bug 3 — Vercel build fail (`workspace:*` protocol):**
+`apps/functions/package.json` used `"@competitor-stalker/shared": "workspace:*"` which only Bun/pnpm understand. Vercel uses `npm install` which doesn't support this protocol.
+**Fix:** Removed the dependency entirely (see Bug 4).
+
+**Bug 4 — Firebase Functions deploy fail (workspace package not found):**
+Firebase deploy only uploads `apps/functions/` directory, not the monorepo root or `packages/shared/`. npm on Cloud Build tried to install `@competitor-stalker/shared` from the npm registry and failed with E404.
+**Fix:** Copied shared files (`constants.js`, `diff-utils.js`) into `apps/functions/src/shared/` and updated all imports from `@competitor-stalker/shared/...` to `../shared/...`. Removed workspace dependency from `package.json`.
+
+**Key debugging insight:** The CORS bug was the hardest to diagnose because: (1) `curl` without `origin` header worked fine, (2) browser GET requests worked (no `origin` header for same-origin GETs), (3) the 500 returned `text/html` so the JSON error parser returned `{}`, falling back to a generic error message.
+
+**Affected files:** `apps/web/lib/api/guide-docs.js`, `apps/web/app/guide-docs/_components/guide-docs-detail.js`, `apps/functions/src/index.js`, `apps/functions/package.json`, `apps/functions/src/shared/constants.js` (new), `apps/functions/src/shared/diff-utils.js` (new), all 8 API files + scheduler that imported from `@competitor-stalker/shared`
+**Cross-refs:** playbook.md — 4 new lessons added

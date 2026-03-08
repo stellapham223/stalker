@@ -2,7 +2,7 @@
 
 This file captures lessons learned from real experience working on this project. Every agent MUST read this during pre-flight. When you make a mistake or discover a better way, add it here so the team never repeats it.
 
-<!-- Last updated: 2026-03-08 -->
+<!-- Last updated: 2026-03-08 by developer (CORS/deploy lessons) -->
 
 ---
 
@@ -13,6 +13,38 @@ This file captures lessons learned from real experience working on this project.
 - Agents add new lessons in the **Post-flight** step after completing work
 - Periodically review and prune lessons that are no longer relevant
 - Keep each lesson to 1-3 lines — actionable, not narrative
+
+---
+
+## API & Networking
+
+### LESSON: Never use raw `fetch` for API calls — always use the shared wrappers
+`fetchJSON`, `postJSON`, `deleteJSON` in `apps/web/lib/api/client.js` automatically attach auth headers (`x-user-email`, `x-auth-token`). Using raw `fetch` bypasses auth and silently fails. If you need a new HTTP method (e.g., PUT), either add a `putJSON` wrapper or manually call `getAuthHeaders()` and spread into headers.
+**Source:** dev-decisions.md 2026-03-08, guide docs update URL bug
+
+### LESSON: CORS `callback(new Error(...))` crashes Express — use `callback(null, false)` instead
+In the Express `cors()` middleware, calling `callback(new Error("message"))` throws an unhandled error that returns an HTML 500 page. Use `callback(null, false)` to reject CORS without crashing. The browser will still block the response, but Express stays healthy.
+**Source:** dev-decisions.md 2026-03-08, CORS 500 bug
+
+### LESSON: Next.js rewrites forward browser `origin` header to the backend
+When using Next.js `rewrites()` as a proxy, the browser's `origin` header is forwarded to the destination. This means the backend's CORS `ALLOWED_ORIGINS` must include the frontend domain, even though the request appears "same-origin" from the browser's perspective. GET requests are usually unaffected because browsers don't send `origin` on same-origin simple GETs.
+**Source:** dev-decisions.md 2026-03-08, CORS 500 bug
+
+### LESSON: When curl works but browser doesn't, check the `origin` header
+Browser requests include `origin` and other headers that curl doesn't send by default. Reproduce browser behavior with `curl -H "origin: https://..." -H "referer: ..."` to catch CORS and header-dependent issues.
+**Source:** dev-decisions.md 2026-03-08, CORS 500 debugging
+
+---
+
+## Deployment
+
+### LESSON: Firebase Functions can't resolve monorepo workspace packages
+Firebase deploy uploads only the function directory (`apps/functions/`), not the monorepo root. Any `workspace:*` or local package dependency will fail with E404 on Cloud Build. Solution: copy shared code into the functions directory and use relative imports. Keep copies in sync manually or via a build script.
+**Source:** dev-decisions.md 2026-03-08, Firebase deploy fail
+
+### LESSON: `workspace:*` protocol only works in Bun/pnpm — npm rejects it
+Vercel uses `npm install` by default. If `package.json` contains `"dependency": "workspace:*"`, npm fails with `EUNSUPPORTEDPROTOCOL`. Either remove the dependency or configure Vercel to use Bun/pnpm.
+**Source:** dev-decisions.md 2026-03-08, Vercel build fail
 
 ---
 
