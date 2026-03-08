@@ -36,6 +36,9 @@ export function GuideDocsDetail({ trackingId, tracking }) {
       queryClient.invalidateQueries({ queryKey: ["guide-docs-trackings"] });
       setUrlEditing(false);
     },
+    onError: (error) => {
+      console.error("[GuideDocsUpdateUrl] Error:", error);
+    },
   });
 
   const latest = snapshots[0] || null;
@@ -120,32 +123,37 @@ export function GuideDocsDetail({ trackingId, tracking }) {
         <div className="mt-6 border-t pt-4">
           <p className="text-sm font-medium mb-2">Update guide URL</p>
           {urlEditing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateUrlMutation.mutate({ id: trackingId, url: urlInput });
-              }}
-              className="flex gap-2"
-            >
-              <input
-                type="url"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                className="flex-1 rounded-md border border-input px-3 py-1.5 text-sm"
-                required
-              />
-              <Button type="submit" size="sm" disabled={updateUrlMutation.isPending}>
-                {updateUrlMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => { setUrlInput(tracking?.url || ""); setUrlEditing(false); }}
+            <>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateUrlMutation.mutate({ id: trackingId, url: urlInput });
+                }}
+                className="flex gap-2"
               >
-                Cancel
-              </Button>
-            </form>
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="flex-1 rounded-md border border-input px-3 py-1.5 text-sm"
+                  required
+                />
+                <Button type="submit" size="sm" disabled={updateUrlMutation.isPending}>
+                  {updateUrlMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setUrlInput(tracking?.url || ""); setUrlEditing(false); }}
+                >
+                  Cancel
+                </Button>
+              </form>
+              {updateUrlMutation.isError && (
+                <p className="mt-2 text-sm text-destructive">{updateUrlMutation.error.message}</p>
+              )}
+            </>
           ) : (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground truncate max-w-sm">{tracking?.url}</span>
