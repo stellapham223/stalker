@@ -6,7 +6,7 @@ import {
 } from "../db/helpers.js";
 import { scrapeHomepageContent, computeHomepageDiff } from "../scrapers/homepageScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
-import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
+import { groupSnapshotsIntoSessions } from "../shared/constants.js";
 
 const COLLECTION = "homepageTrackings";
 export const homepageRoutes = Router();

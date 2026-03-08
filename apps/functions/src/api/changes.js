@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import { requireAuth } from "./middleware.js";
-import { diffChangeCount, keywordChangeCount } from "@competitor-stalker/shared/diff-utils.js";
+import { diffChangeCount, keywordChangeCount } from "../shared/diff-utils.js";
 
 export const changesRoutes = Router();
 

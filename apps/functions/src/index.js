@@ -28,11 +28,11 @@ const nextauthSecret = defineSecret("NEXTAUTH_SECRET");
 // ============ Express API (single Firebase Function) ============
 const app = express();
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000").split(",");
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,https://stalker-api.vercel.app").split(",");
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error("Not allowed by CORS"));
+    callback(null, false);
   },
   credentials: true,
 }));

@@ -7,7 +7,7 @@ import {
 } from "../db/helpers.js";
 import { scrapeAppListing, computeAppListingDiff } from "../scrapers/appListingScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
-import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
+import { groupSnapshotsIntoSessions } from "../shared/constants.js";
 
 const COLLECTION = "appListingCompetitors";
 export const appListingRoutes = Router();

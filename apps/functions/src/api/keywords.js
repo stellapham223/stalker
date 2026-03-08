@@ -7,7 +7,7 @@ import {
 } from "../db/helpers.js";
 import { scrapeKeywordRanking, computeRankingDiff } from "../scrapers/keywordScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
-import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
+import { groupSnapshotsIntoSessions } from "../shared/constants.js";
 
 const COLLECTION = "keywordTrackings";
 export const keywordRoutes = Router();

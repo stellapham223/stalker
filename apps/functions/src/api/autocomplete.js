@@ -6,7 +6,7 @@ import {
 } from "../db/helpers.js";
 import { scrapeAutocomplete, computeAutocompleteDiff } from "../scrapers/autocompleteScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
-import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
+import { groupSnapshotsIntoSessions } from "../shared/constants.js";
 
 const COLLECTION = "autocompleteTrackings";
 export const autocompleteRoutes = Router();

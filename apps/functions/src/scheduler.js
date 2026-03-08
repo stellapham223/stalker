@@ -1,6 +1,6 @@
 import { db } from "./db/firestore.js";
 import { getLatestSnapshot, getLatestSnapshotWithDiff, getRecentDiffs, addSnapshot, getRecentSnapshotsWithDiff, isDuplicateDiff, isNoisyFieldDiff } from "./db/helpers.js";
-import { diffChangeCount, keywordChangeCount } from "@competitor-stalker/shared/diff-utils.js";
+import { diffChangeCount, keywordChangeCount } from "./shared/diff-utils.js";
 
 import { scrapeCompetitor } from "./scrapers/competitorScraper.js";
 import { computeDiff } from "./scrapers/differ.js";
