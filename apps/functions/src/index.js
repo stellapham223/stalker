@@ -45,6 +45,7 @@ app.use("/auth", authRoutes);
 app.use((req, res, next) => {
   if (req.method === "GET") return next();
   if (req.path === "/health") return next();
+  if (req.path === "/scrape-all") return next();
   return requireAuth(req, res, next);
 });
 

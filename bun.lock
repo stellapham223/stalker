@@ -17,6 +17,7 @@
       "name": "@competitor-stalker/functions",
       "version": "0.0.1",
       "dependencies": {
+        "@competitor-stalker/shared": "workspace:*",
         "cheerio": "^1.2.0",
         "cors": "^2.8.5",
         "diff": "^7.0.0",
