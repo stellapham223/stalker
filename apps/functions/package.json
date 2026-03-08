@@ -20,6 +20,6 @@
     "firebase-functions": "^5.0.0",
     "pg": "^8.20.0",
     "puppeteer": "^24.2.0",
-    "@competitor-stalker/shared": "workspace:*"
+    "@competitor-stalker/shared": "*"
   }
 }
