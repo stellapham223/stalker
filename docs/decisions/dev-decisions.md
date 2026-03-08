@@ -48,3 +48,25 @@ Decisions made by the Developer agent that affect the codebase.
 - Bumped `scheduledScrape` memory from `2GiB` → `4GiB` for parallel Puppeteer instances
 **Affected files:** `apps/functions/src/scheduler.js`, `apps/functions/src/index.js`
 **Cross-refs:** TASK-006 in tasks.md, qa-decisions.md#2026-03-07 timeout warning
+
+## [2026-03-08] Fix Puppeteer browser leak + Telegram notification type mismatch
+**Agent:** developer (via qa-engineer cron review)
+**Decision:** Two fixes for the 6 AM scheduled scrape:
+1. Moved `puppeteer.launch()` / `launchBrowser()` inside try blocks in all 5 Puppeteer scrapers, with `if (browser) await browser.close()` in finally. Previously browser was launched outside try/finally — if launch or page setup failed, the browser process leaked. When 5 scrapers ran in parallel (TASK-006), leaked browsers cascaded into memory exhaustion, causing 5/7 scrapers to fail.
+2. Changed `scheduler.js` `scrapeStartTime` from `new Date()` to `new Date().toISOString()` so the Telegram notification query (`getRecentSnapshotsWithDiff`) compares ISO string vs ISO string instead of Timestamp vs string. The type mismatch caused the query to return 0 results, silently skipping notifications.
+**Rationale:** First scheduled run after parallelization (TASK-006) showed only App Listing + Autocomplete succeeding (both use fetch, not Puppeteer). The 5 Puppeteer-based scrapers all failed due to resource exhaustion from leaked browser processes.
+**Affected files:** `competitorScraper.js`, `keywordScraper.js`, `menuScraper.js`, `homepageScraper.js`, `guideDocsScraper.js`, `scheduler.js`
+**Cross-refs:** qa-decisions.md#2026-03-07 item 3 (browser cleanup warning), playbook.md "Always close Puppeteer browsers in finally blocks"
+
+## [2026-03-08] Consolidate duplicated business logic to break bug cycle
+**Agent:** developer (retrospective analysis)
+**Decision:** Extracted duplicated business logic into shared modules to prevent recurring bugs:
+1. `diffChangeCount()` + `keywordChangeCount()` → `packages/shared/diff-utils.js` (was duplicated in `changes.js` + `scheduler.js`)
+2. `WINDOW_MS` + session grouping logic → `packages/shared/constants.js` (was copy-pasted across 6 API files)
+3. Replaced raw `db.collection().where("ownerEmail")` queries with `getActiveItemsByOwner()` helper (with runtime guard)
+4. Added runtime assertions in `addSnapshot()` and `createDoc()` (prevent Date objects, require ownerEmail)
+5. Added JSDoc diff format spec in `diff-utils.js` with 7 typedef definitions
+6. Added 20 unit tests covering all 7 diff formats
+**Rationale:** Retrospective found that bugs were recurring because the same logic existed in 2-6 places. Fixing one copy left others broken, creating bug chains (badge bug fixed 3 times, admin page fixed 4 times, ownerEmail leak fixed twice). Consolidating to single source of truth means future changes only need to happen in one place.
+**Affected files:** `packages/shared/diff-utils.js` (new), `packages/shared/diff-utils.test.js` (new), `packages/shared/constants.js`, `packages/shared/package.json`, `apps/functions/src/api/changes.js`, `apps/functions/src/scheduler.js`, `apps/functions/src/db/helpers.js`, + all 6 feature API files (keywords, appListing, autocomplete, websiteMenus, homepage, guideDocs)
+**Cross-refs:** playbook.md — new lessons on code duplication

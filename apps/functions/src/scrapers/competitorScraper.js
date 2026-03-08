@@ -1,12 +1,12 @@
 import puppeteer from "puppeteer";
 
 export async function scrapeCompetitor(competitor) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-  });
-
+  let browser;
   try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
     const page = await browser.newPage();
     await page.setUserAgent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -30,6 +30,6 @@ export async function scrapeCompetitor(competitor) {
 
     return results;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }

@@ -1,5 +1,6 @@
 import { db } from "./db/firestore.js";
 import { getLatestSnapshot, getLatestSnapshotWithDiff, getRecentDiffs, addSnapshot, getRecentSnapshotsWithDiff, isDuplicateDiff, isNoisyFieldDiff } from "./db/helpers.js";
+import { diffChangeCount, keywordChangeCount } from "@competitor-stalker/shared/diff-utils.js";
 
 import { scrapeCompetitor } from "./scrapers/competitorScraper.js";
 import { computeDiff } from "./scrapers/differ.js";
@@ -18,7 +19,7 @@ import { sendTelegramMessage } from "./scrapers/telegram.js";
  * sequentially to avoid overwhelming a single target site.
  */
 export async function runScrapeAll() {
-  const scrapeStartTime = new Date();
+  const scrapeStartTime = new Date().toISOString();
 
   const scraperTasks = [
     { name: "competitors", fn: scrapeAllCompetitors },
@@ -330,45 +331,6 @@ async function sendNotification(scrapeStartTime) {
   console.log("[notify] Building change summary...");
   const since = scrapeStartTime;
 
-  function countKeywordChanges(snap) {
-    if (!snap) return 0;
-    return (snap.newEntries?.length ?? 0) + (snap.droppedEntries?.length ?? 0) + (snap.positionChanges?.length ?? 0);
-  }
-
-  function countDiffChanges(diff) {
-    if (!diff) return 0;
-    let n = 0;
-    // Homepage diffs have both added[] and addedCount — prefer counts to avoid double-counting
-    if (typeof diff.addedCount === "number" || typeof diff.removedCount === "number") {
-      n += diff.addedCount ?? 0;
-      n += diff.removedCount ?? 0;
-    } else {
-      if (Array.isArray(diff.added)) n += diff.added.length;
-      if (Array.isArray(diff.removed)) n += diff.removed.length;
-    }
-    if (Array.isArray(diff.renamed)) n += diff.renamed.length;
-    if (Array.isArray(diff.reordered)) n += diff.reordered.length;
-    if (Array.isArray(diff.childrenChanged)) n += diff.childrenChanged.length;
-    if (n === 0) {
-      const fieldChanges = Object.entries(diff).filter(
-        ([, v]) => v && typeof v === "object" && "old" in v && "new" in v
-      );
-      for (const [, change] of fieldChanges) {
-        if (Array.isArray(change.old) && Array.isArray(change.new)) {
-          const oldSet = new Set(change.old.map((x) => JSON.stringify(x)));
-          const newSet = new Set(change.new.map((x) => JSON.stringify(x)));
-          let delta = 0;
-          for (const item of newSet) if (!oldSet.has(item)) delta++;
-          for (const item of oldSet) if (!newSet.has(item)) delta++;
-          n += delta || 1;
-        } else {
-          n += 1;
-        }
-      }
-    }
-    return n;
-  }
-
   const lines = [];
   let totalChanges = 0;
 
@@ -378,7 +340,7 @@ async function sendNotification(scrapeStartTime) {
   for (const doc of kwItems.docs) {
     const kw = { id: doc.id, ...doc.data() };
     const snap = await getRecentSnapshotsWithDiff("keywordTrackings", kw.id, since);
-    const count = countKeywordChanges(snap);
+    const count = keywordChangeCount(snap);
     if (count > 0) {
       const parts = [];
       if (snap.newEntries?.length) parts.push(`+${snap.newEntries.length} app mới`);
@@ -397,7 +359,7 @@ async function sendNotification(scrapeStartTime) {
     const ac = { id: doc.id, ...doc.data() };
     const snap = await getRecentSnapshotsWithDiff("autocompleteTrackings", ac.id, since);
     if (snap && snap.diff) {
-      const count = countDiffChanges(snap.diff);
+      const count = diffChangeCount(snap.diff);
       const parts = [];
       if (snap.diff.added?.length) parts.push(`+${snap.diff.added.length}`);
       if (snap.diff.removed?.length) parts.push(`-${snap.diff.removed.length}`);
@@ -429,7 +391,7 @@ async function sendNotification(scrapeStartTime) {
     const wm = { id: doc.id, ...doc.data() };
     const snap = await getRecentSnapshotsWithDiff("websiteMenuTrackings", wm.id, since);
     if (snap && snap.diff) {
-      const count = countDiffChanges(snap.diff);
+      const count = diffChangeCount(snap.diff);
       wmChanged.push(`  • ${wm.name}: ${count} thay đổi`);
       totalChanges += count;
     }
@@ -459,7 +421,7 @@ async function sendNotification(scrapeStartTime) {
     const gd = { id: doc.id, ...doc.data() };
     const snap = await getRecentSnapshotsWithDiff("guideDocsTrackings", gd.id, since);
     if (snap && snap.diff) {
-      const count = countDiffChanges(snap.diff);
+      const count = diffChangeCount(snap.diff);
       gdChanged.push(`  • ${gd.name}: ${count} thay đổi`);
       totalChanges += count;
     }

@@ -51,6 +51,34 @@ export const DEFAULT_COMPETITOR_WEBSITES = [
   { name: "Loop", url: "https://www.loopwork.co/", interactionType: "hover" },
 ];
 
+// Session window: snapshots within this time range are grouped into one session
+export const SESSION_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Group snapshots into sessions based on time proximity.
+ * Snapshots within SESSION_WINDOW_MS of each other belong to the same session.
+ *
+ * @param {Array} snapshots - Snapshots sorted by createdAt desc
+ * @returns {Array<{time: number, createdAt: string, snapshots: Array}>} Grouped sessions
+ */
+export function groupSnapshotsIntoSessions(snapshots) {
+  const sessions = [];
+  let currentSession = null;
+
+  for (const snap of snapshots) {
+    const snapTime = snap.createdAt?.toDate
+      ? snap.createdAt.toDate().getTime()
+      : new Date(snap.createdAt).getTime();
+    if (!currentSession || currentSession.time - snapTime > SESSION_WINDOW_MS) {
+      currentSession = { time: snapTime, createdAt: snap.createdAt, snapshots: [] };
+      sessions.push(currentSession);
+    }
+    currentSession.snapshots.push(snap);
+  }
+
+  return sessions;
+}
+
 // Job names
 export const JOB_NAMES = {
   SCRAPE_COMPETITOR: "scrape-competitor",

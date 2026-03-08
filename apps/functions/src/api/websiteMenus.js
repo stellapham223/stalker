@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { db } from "../db/firestore.js";
 import {
-  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, updateDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getActiveItemsByOwner, getById, createDoc, updateDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot, getLatestSnapshotWithDiff, getSnapshotsWithChanges, isDuplicateDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeWebsiteMenu, computeMenuDiff } from "../scrapers/menuScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
+import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
 
 const COLLECTION = "websiteMenuTrackings";
 export const websiteMenuRoutes = Router();
@@ -99,18 +99,7 @@ websiteMenuRoutes.get("/dashboard", async (req, res) => {
     const trackings = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
     const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
-    const WINDOW_MS = 5 * 60 * 1000;
-    const sessions = [];
-    let currentSession = null;
-
-    for (const snap of allSnapshots) {
-      const snapTime = snap.createdAt?.toDate ? snap.createdAt.toDate().getTime() : new Date(snap.createdAt).getTime();
-      if (!currentSession || currentSession.time - snapTime > WINDOW_MS) {
-        currentSession = { time: snapTime, createdAt: snap.createdAt, snapshots: [] };
-        sessions.push(currentSession);
-      }
-      currentSession.snapshots.push(snap);
-    }
+    const sessions = groupSnapshotsIntoSessions(allSnapshots);
 
     const timeline = sessions.map((session) => {
       const rows = trackings.map((tracking) => {
@@ -150,8 +139,7 @@ websiteMenuRoutes.post("/:id/scrape", async (req, res) => {
 
 websiteMenuRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
-    const trackings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const trackings = await getActiveItemsByOwner(COLLECTION, req.userEmail);
     for (const tracking of trackings) {
       try { await runWebsiteMenuScrape(tracking); }
       catch (err) { console.error(`[website-menus] Failed to scrape "${tracking.name}":`, err.message); }

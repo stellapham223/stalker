@@ -46,6 +46,7 @@ export async function getAllOrderedByOwner(collection, ownerEmail, order = "asc"
  * Get active documents belonging to a specific owner.
  */
 export async function getActiveItemsByOwner(collection, ownerEmail) {
+  if (!ownerEmail) throw new Error(`getActiveItemsByOwner: ownerEmail is required (collection: ${collection})`);
   const snap = await db
     .collection(collection)
     .where("ownerEmail", "==", ownerEmail)
@@ -101,6 +102,8 @@ export async function getById(collection, id) {
  * Create a document with auto-generated ID.
  */
 export async function createDoc(collection, data) {
+  if (!data.ownerEmail) throw new Error(`createDoc: ownerEmail is required (collection: ${collection})`);
+  if (data.createdAt instanceof Date) throw new Error("createDoc: createdAt must be an ISO string, not a Date object");
   const id = uuid();
   const now = new Date().toISOString();
   const docData = { ...data, createdAt: now, updatedAt: now };
@@ -142,6 +145,13 @@ export async function deleteDocWithSnapshots(collection, id) {
  * Add a snapshot to a document's snapshots subcollection.
  */
 export async function addSnapshot(collection, parentId, snapshotData) {
+  if (!collection) throw new Error("addSnapshot: collection is required");
+  if (!parentId) throw new Error("addSnapshot: parentId is required");
+  // Guard: createdAt must never be a Date object (Firestore converts it to Timestamp,
+  // breaking orderBy queries that mix Timestamps and ISO strings)
+  if (snapshotData.createdAt instanceof Date) {
+    throw new Error("addSnapshot: createdAt must be an ISO string, not a Date object");
+  }
   const id = uuid();
   const now = new Date().toISOString();
   const data = { ...snapshotData, createdAt: now };

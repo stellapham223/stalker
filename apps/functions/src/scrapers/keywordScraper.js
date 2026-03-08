@@ -31,9 +31,9 @@ function sleep(ms) {
 }
 
 export async function scrapeKeywordRanking(searchUrl) {
-  const browser = await launchBrowser();
-
+  let browser;
   try {
+    browser = await launchBrowser();
     const page = await setupPage(browser);
     await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
 
@@ -133,7 +133,7 @@ export async function scrapeKeywordRanking(searchUrl) {
 
     return rankings;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 

@@ -2,7 +2,7 @@
 
 This file captures lessons learned from real experience working on this project. Every agent MUST read this during pre-flight. When you make a mistake or discover a better way, add it here so the team never repeats it.
 
-<!-- Last updated: 2026-03-07 -->
+<!-- Last updated: 2026-03-08 -->
 
 ---
 
@@ -29,6 +29,14 @@ When scraping, always scope selectors to the specific container (e.g., `.gallery
 ### LESSON: Count diffs consistently — don't double-count
 When a diff object has both `added` (array) and `addedCount` (number), use one or the other, not both. We had badge counts doubled because code summed both fields.
 **Source:** qa-decisions.md 2026-03-07, badge double-counting bug
+
+### LESSON: Never duplicate business logic — use shared modules
+If the same function/constant exists in 2+ places, extract to `packages/shared/`. We had `diffChangeCount` in both `changes.js` and `scheduler.js` — fixing one left the other broken, causing 3 rounds of badge bug fixes. Same for `WINDOW_MS` (6 copies) and ownerEmail filtering (6 copies). Single source of truth = change once, fix everywhere.
+**Source:** dev-decisions.md 2026-03-08, retrospective consolidation
+
+### LESSON: Use `getActiveItemsByOwner()` instead of raw Firestore queries for user data
+Never write `db.collection(X).where("ownerEmail", "==", email)` directly — use the helper which has a built-in guard that throws if `ownerEmail` is empty. This prevents the ownerEmail leak bug that occurred twice.
+**Source:** dev-decisions.md 2026-03-08, retrospective consolidation
 
 ### LESSON: Per-item state, not global state, for "seen" tracking
 When tracking whether a user has seen changes, compare each item's timestamp against its own `seenAt` — not a global session timestamp. Global timestamps cause marking one item as seen to hide badges for other unseen items.

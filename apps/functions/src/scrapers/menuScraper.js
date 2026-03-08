@@ -29,9 +29,9 @@ function sleep(ms) {
 }
 
 export async function scrapeWebsiteMenu(url, interactionType) {
-  const browser = await launchBrowser();
-
+  let browser;
   try {
+    browser = await launchBrowser();
     const page = await setupPage(browser);
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
     await sleep(3000);
@@ -180,7 +180,7 @@ export async function scrapeWebsiteMenu(url, interactionType) {
 
     return menuData;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 

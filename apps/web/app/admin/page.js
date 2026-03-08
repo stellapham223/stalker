@@ -44,13 +44,9 @@ export default function AdminPage() {
         credentials: "include",
         body: JSON.stringify({ email }),
       });
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        throw new Error(`Server error (${res.status}) — backend may not be running`);
-      }
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || "Failed");
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Failed (${res.status})`);
       }
       return res.json();
     },

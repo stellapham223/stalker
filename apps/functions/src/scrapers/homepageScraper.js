@@ -46,9 +46,9 @@ async function autoScroll(page) {
 }
 
 export async function scrapeHomepageContent(url) {
-  const browser = await launchBrowser();
-
+  let browser;
   try {
+    browser = await launchBrowser();
     const page = await setupPage(browser);
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
     await sleep(2000);
@@ -148,7 +148,7 @@ export async function scrapeHomepageContent(url) {
 
     return result;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 

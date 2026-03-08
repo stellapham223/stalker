@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import {
-  getAllOrderedByOwner, getAllSnapshotsByOwner, getById, createDoc, deleteDocWithSnapshots,
+  getAllOrderedByOwner, getAllSnapshotsByOwner, getActiveItemsByOwner, getById, createDoc, deleteDocWithSnapshots,
   addSnapshot, getSnapshots, getLatestSnapshot, getRecentDiffs, isNoisyFieldDiff,
   serializeDocs, serializeDoc,
 } from "../db/helpers.js";
 import { scrapeAppListing, computeAppListingDiff } from "../scrapers/appListingScraper.js";
 import { requireAuth, checkOwnership } from "./middleware.js";
+import { groupSnapshotsIntoSessions } from "@competitor-stalker/shared/constants.js";
 
 const COLLECTION = "appListingCompetitors";
 export const appListingRoutes = Router();
@@ -71,18 +72,7 @@ appListingRoutes.get("/dashboard", async (req, res) => {
     const competitors = await getAllOrderedByOwner(COLLECTION, req.userEmail, "asc");
     const allSnapshots = await getAllSnapshotsByOwner(COLLECTION, req.userEmail);
 
-    const WINDOW_MS = 5 * 60 * 1000;
-    const sessions = [];
-    let currentSession = null;
-
-    for (const snap of allSnapshots) {
-      const snapTime = snap.createdAt?.toDate ? snap.createdAt.toDate().getTime() : new Date(snap.createdAt).getTime();
-      if (!currentSession || currentSession.time - snapTime > WINDOW_MS) {
-        currentSession = { time: snapTime, createdAt: snap.createdAt, snapshots: [] };
-        sessions.push(currentSession);
-      }
-      currentSession.snapshots.push(snap);
-    }
+    const sessions = groupSnapshotsIntoSessions(allSnapshots);
 
     const FIELDS = ["title", "screenshots", "videos", "appDetails", "languages", "worksWith", "categories", "pricing"];
 
@@ -117,8 +107,7 @@ appListingRoutes.get("/dashboard", async (req, res) => {
 
 appListingRoutes.post("/scrape-all", async (req, res) => {
   try {
-    const snap = await db.collection(COLLECTION).where("active", "==", true).where("ownerEmail", "==", req.userEmail).get();
-    const competitors = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const competitors = await getActiveItemsByOwner(COLLECTION, req.userEmail);
     for (const competitor of competitors) {
       try { await runAppListingScrape(competitor); }
       catch (err) { console.error(`[app-listing] Failed to scrape "${competitor.name}":`, err.message); }

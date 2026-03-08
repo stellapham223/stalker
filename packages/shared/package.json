@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./constants.js": "./constants.js"
+    "./constants.js": "./constants.js",
+    "./diff-utils.js": "./diff-utils.js"
   }
 }

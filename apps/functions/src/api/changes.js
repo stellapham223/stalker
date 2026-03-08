@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db/firestore.js";
 import { requireAuth } from "./middleware.js";
+import { diffChangeCount, keywordChangeCount } from "@competitor-stalker/shared/diff-utils.js";
 
 export const changesRoutes = Router();
 
@@ -31,51 +32,6 @@ changesRoutes.get("/latest", async (req, res) => {
     const menuTrackings = menuSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const homepageTrackings = homepageSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const guideDocsTrackings = guideDocsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-    function keywordChangeCount(snap) {
-      if (!snap) return 0;
-      const n = snap.newEntries?.length ?? 0;
-      const d = snap.droppedEntries?.length ?? 0;
-      const p = snap.positionChanges?.length ?? 0;
-      return n + d + p;
-    }
-
-    function diffChangeCount(diff) {
-      if (!diff) return 0;
-      let count = 0;
-      // Homepage diffs have addedCount/removedCount as summary numbers
-      // alongside added/removed arrays — use counts to avoid double counting
-      if (typeof diff.addedCount === "number" || typeof diff.removedCount === "number") {
-        count += diff.addedCount ?? 0;
-        count += diff.removedCount ?? 0;
-      } else {
-        if (Array.isArray(diff.added)) count += diff.added.length;
-        if (Array.isArray(diff.removed)) count += diff.removed.length;
-      }
-      if (Array.isArray(diff.renamed)) count += diff.renamed.length;
-      if (Array.isArray(diff.reordered)) count += diff.reordered.length;
-      if (Array.isArray(diff.childrenChanged)) count += diff.childrenChanged.length;
-      // App listing diffs: {fieldName: {old, new}}
-      if (count === 0) {
-        const fieldChanges = Object.entries(diff).filter(
-          ([, v]) => v && typeof v === "object" && "old" in v && "new" in v
-        );
-        for (const [, change] of fieldChanges) {
-          if (Array.isArray(change.old) && Array.isArray(change.new)) {
-            // For array fields (screenshots, etc.), count added + removed items
-            const oldSet = new Set(change.old.map((x) => JSON.stringify(x)));
-            const newSet = new Set(change.new.map((x) => JSON.stringify(x)));
-            let delta = 0;
-            for (const item of newSet) if (!oldSet.has(item)) delta++;
-            for (const item of oldSet) if (!newSet.has(item)) delta++;
-            count += delta || 1; // at least 1 if arrays differ
-          } else {
-            count += 1;
-          }
-        }
-      }
-      return count;
-    }
 
     function keywordSummary(snap) {
       if (!snap || keywordChangeCount(snap) === 0) return null;
