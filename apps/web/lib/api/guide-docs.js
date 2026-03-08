@@ -1,4 +1,4 @@
-import { fetchJSON, postJSON, deleteJSON, API_URL } from "./client";
+import { fetchJSON, postJSON, deleteJSON, getAuthHeaders, API_URL } from "./client";
 
 export function fetchGuideDocsTrackings() {
   return fetchJSON("/api/guide-docs");
@@ -8,13 +8,16 @@ export function createGuideDocsTracking(data) {
   return postJSON("/api/guide-docs", data);
 }
 
-export function updateGuideDocsTracking(id, data) {
-  return fetch(`${API_URL}/api/guide-docs/${id}`, {
+export async function updateGuideDocsTracking(id, data) {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/guide-docs/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders },
     credentials: "include",
     body: JSON.stringify(data),
-  }).then((r) => r.json());
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
 }
 
 export function deleteGuideDocsTracking(id) {
